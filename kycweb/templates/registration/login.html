@@ -1,0 +1,37 @@
+{% extends 'kycweb/base.html' %}
+
+
+{% block nav_block %}
+    <div class="navbar-wrapper">
+        <a class="navbar-brand" href="#">Login</a>
+    </div>
+{% endblock nav_block%}
+
+{% block body_block %}
+<style>
+    .container-form{
+        position: relative;
+        min-width: 300px;
+        margin-top: 5%;
+        margin-left: 20%;
+        margin-right: 20%;
+        box-shadow: 0 0.2rem 0.4rem rgba(0,0,0,0.23);
+        padding: 3%;
+    }
+</style>
+<div class="container-form">
+    <form method="POST" action="{% url 'login' %}">    
+        {% csrf_token %}
+        {% for fl in form %}
+        <div class="form-group">
+            {{ fl.label_tag }}
+            {{ fl }}
+            <!-- <small id="emailHelp" class="form-text text-muted">Your Email will remain private :).</small> -->
+        </div>
+        {% endfor %}
+    
+        <button type="submit" class="btn btn-primary">Submit</button><p> OR </p><a href="#">Signup Here</a>
+    </form>
+</div>
+  {% endblock body_block %}
+  
