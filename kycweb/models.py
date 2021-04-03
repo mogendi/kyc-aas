@@ -19,7 +19,7 @@ class Usr(models.Model):
     #linking to default django usr model
     def_usr = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cust_usr')
     #extra user info/ validators
-    profile_pic = models.ImageField(upload_to="profile_pics", default='static/download.jpg', blank=True)
+    profile_pic = models.ImageField(upload_to="profile_pics", default='static/default_pfp.jpg', blank=True)
     phone_regex = RegexValidator(regex=r'^07[0-9]{8}', message="Phone number must be entered in the format: '0799999999'.")
     phone_number = models.CharField(validators=[phone_regex], max_length=14, blank=True)
     #unique usr ID for accessing other chests
@@ -29,12 +29,15 @@ class Usr(models.Model):
     
     def save(self, *args, **kwargs):
         if self.data_dir is None or len(self.data_dir) < 1:
-            self.data_dir = "user/{0}/".format(self.def_usr.id)
+            self.data_dir = "users/{0}/".format(self.def_usr.id)
             os.makedirs(self.data_dir)
         if len(self.ctx_id)<1:
             ltrs = string.ascii_lowercase
             self.ctx_id = ''.join(random.choice(ltrs) for i in range(12))
         super(Usr, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return self.def_usr.username
 
 '''
 Data chests where data is stored
@@ -45,18 +48,25 @@ users or corps to access (accessed differently)
 class Chest(models.Model):
     #User facing ID for chests
     chest_ID = models.CharField(max_length=20, blank=False)
+    chest_name = models.CharField(max_length=255, blank=True)
     created_by = models.ForeignKey(Usr, related_name="Chest", on_delete=models.CASCADE)
     chest_dir = models.CharField(max_length=400)
     chest_size = models.CharField(max_length=100, blank=False)
 
     # Each chest gets its own subdirectory on creation
     def save(self, *args, **kwargs):
-        ltrs = string.ascii_lowercase
-        self.chest_ID = ''.join(random.choice(ltrs) for i in 12)
-        if self.chest_dir is None:
-            self.chest_dir = "{0}{1}/".format(self.created_by.data_dir, self.chest_id)
-            os.mkdir(self.chest_dir)
+        if len(self.chest_ID)<1:
+            ltrs = string.ascii_lowercase
+            self.chest_ID = ''.join(random.choice(ltrs) for i in range(12))
+            if len(self.chest_name) < 1:
+                self.chest_name = self.chest_ID
+        if self.chest_dir is None or len(self.chest_dir) < 1:
+            self.chest_dir = "{0}{1}".format(self.created_by.data_dir, self.chest_ID)
+            os.makedirs(self.chest_dir)
         super(Chest, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return self.chest_name
 
 '''
 registry for all the users that can access
@@ -90,15 +100,20 @@ multiple files
 '''
 class FileInstances(models.Model):
     chest = models.ForeignKey(Chest, related_name="File", blank=False, on_delete=models.CASCADE)
-    file = models.FileField(upload_to=upload_folder)
+    upload_path = models.CharField(max_length=400, blank=True)
+    file_type = models.CharField(max_length=400, blank=True)
 
     # Whenever a new file instance is created
     # the chest size needs to be updated
     def save(self, *args, **kwargs):
-        if self.file is not None:
-            nbytes = sum(os.path.getsize(f) for f in os.listdir(self.chest.related_model.chest_dir) if os.path.isfile(f))
-            self.chest.related_model.chestsize = str(nbytes)
-            super(FileInstances, self).save(args, kwargs)
+        if len(self.upload_path) < 1:
+            self.upload_path = self.chest.chest_dir
+            nbytes = sum(os.path.getsize(f) for f in os.listdir(self.chest.chest_dir) if os.path.isfile(f))
+            self.chest.chestsize = str(nbytes)
+        super(FileInstances, self).save(*args, **kwargs)
+
+    def __str__(self):
+        return self.upload_path
 
 
 '''

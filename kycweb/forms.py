@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.models import User
-from .models import Usr
+from .models import Usr, FileInstances, Chest
 
 class UserForm(forms.ModelForm):
     class Meta:
@@ -22,3 +22,8 @@ class UsrForm(forms.ModelForm):
     class Meta:
         model = Usr
         fields = ['phone_number', 'profile_pic']
+
+class FileForm(forms.ModelForm):
+    class Meta:
+        model = FileInstances
+        fields = ['upload_path',]

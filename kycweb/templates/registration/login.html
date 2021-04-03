@@ -20,7 +20,7 @@
     }
 </style>
 <div class="container-form">
-    <form method="POST" action="{% url 'login' %}">    
+    <form method="POST" action="">    
         {% csrf_token %}
         {% for fl in form %}
         <div class="form-group">

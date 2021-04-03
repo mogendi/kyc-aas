@@ -14,15 +14,17 @@
   <link href="{% static 'kycweb/dash.css' %}" rel="stylesheet" />
   <link href="{% static 'kycweb/material-dashboard.css' %}" rel="stylesheet" />
 </head>
-    <body>
-        <nav class="navbar navbar-expand-lg navbar-transparent navbar-absolute fixed-top ">
-            <div class="container-fluid">
-                {% block nav_block %}
-                {% endblock nav_block%}
-            </div>
-        </nav>
-        {% block body_block %}
+<body>
+    <nav class="navbar navbar-expand-lg navbar-transparent navbar-absolute fixed-top ">
+        <div class="container-fluid">
+            {% block nav_block %}
+            {% endblock nav_block%}
+        </div>
+    </nav>
+    {% block body_block %}
 
-        {% endblock body_block %}
-    </body>
+    {% endblock body_block %}
+    
+</body>
+
 </html>

@@ -21,5 +21,8 @@ from django.contrib.auth import views as ath
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('kycweb/', include('kycweb.urls')),
-    path('login/', ath.LoginView.as_view(), name="login")
+    path('login/', ath.LoginView.as_view(), name="login"),
+    path('logout', ath.LogoutView.as_view(), name="logout"),
+    path('', include('kycweb.urls')),
+    path('DC/', include('DC.urls')),
 ]

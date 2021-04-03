@@ -32,38 +32,38 @@
           </a></div>
         <div class="sidebar-wrapper">
           <ul class="nav">
-            <li class="nav-item active  ">
-              <a class="nav-link" href="./dashboard.html">
+            <li class="nav-item active">
+              <a class="nav-link" href="#" id="chests">
                 <i class="material-icons">dashboard</i>
                 <p>Chests</p>
               </a>
             </li>
 
             <li class="nav-item ">
-              <a class="nav-link" href="./user.html">
-                <i class="material-icons">person</i>
-                <p>User Profile</p>
-              </a>
-            </li>
-
-            <li class="nav-item ">
-              <a class="nav-link" href="./tables.html">
-                <i class="material-icons">settings</i>
-                <p>Settings</p>
-              </a>
-            </li>
-
-            <li class="nav-item ">
-              <a class="nav-link" href="./typography.html">
+              <a class="nav-link" href="#" id="company-search">
                 <i class="material-icons">search</i>
                 <p>Company Search</p>
               </a>
             </li>
 
             <li class="nav-item ">
-              <a class="nav-link" href="./map.html">
+              <a class="nav-link" href="#" id="profile">
+                <i class="material-icons">person</i>
+                <p>User Profile</p>
+              </a>
+            </li>
+
+            <li class="nav-item ">
+              <a class="nav-link" href="#" id="space-settings">
                 <i class="material-icons">upgrade</i>
                 <p>Upgrade Space</p>
+              </a>
+            </li>
+
+            <li class="nav-item ">
+              <a class="nav-link" href="#" id="settings">
+                <i class="material-icons">settings</i>
+                <p>Settings</p>
               </a>
             </li>
 
@@ -72,55 +72,6 @@
       </div>
 
       <div class="content">
-          <div class="container-fluid">
-            <div class="row">
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                  <div class="card card-stats">
-                    <div class="card-header card-header-warning card-header-icon">
-                      <div class="card-icon">
-                        <i class="material-icons">content_copy</i>
-                      </div>
-                      <p class="card-category">Used Space</p>
-                      <h3 class="card-title">{{ size }} / {{ lim }}
-                        <small>MB</small>
-                      </h3>
-                    </div>
-                    <div class="card-footer">
-                    {% if dng is True %}
-                      <div class="stats">
-                        <i class="material-icons text-danger">warning</i>
-                        <a href="javascript:;">Get More Space.</a>
-                      </div>
-                    {% else %}
-                      <div class="stats">
-                        <i class="material-icons">thumb_up</i>
-                        <a href="javascript:;">Theres space available.</a>
-                      </div>
-                    {% endif %}
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-lg-3 col-md-6 col-sm-6">
-                  <div class="card card-stats">
-                    <div class="card-header card-header-success card-header-icon">
-                      <div class="card-icon">
-                        <i class="material-icons">lock_open</i>
-                      </div>
-                      <p class="card-category">Total chest hits</p>
-                      <h3 class="card-title">{{ n_hits }}</h3>
-                    </div>
-                    <div class="card-footer">
-                      <div class="stats">
-                        <i class="material-icons">date_range</i> Since sign up
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-          </div>
-
-
 
       </div>
 </div>
@@ -171,6 +122,72 @@
 <script src="/demo/demo.js' %} "></script>
 <script>
   $(document).ready(function() {
+    $('#chests').click(
+      function(){
+        $("#chests").parent().addClass("active");
+        $("#company-search").parent().removeClass("active");
+        $("#profile").parent().removeClass("active");
+        $("#space-settings").parent().removeClass("active");
+        $("#settings").parent().removeClass("active");
+        $.get('chests/', function(data, status){
+            $('.content').html(data);
+      })
+    });
+
+    $('#company-search').click(
+      function(){
+        $("#company-search").parent().addClass("active");
+        $("#chests").parent().removeClass("active");
+        $("#profile").parent().removeClass("active");
+        $("#space-settings").parent().removeClass("active");
+        $("#settings").parent().removeClass("active");
+        var catid = 1;
+        $.get('/DC/resources/' + catid + '/', function(data, status){
+            $('.content').html(data.content);
+      })
+    });
+
+    $('#profile').click(
+      function(){
+        $("#profile").parent().addClass("active");
+        $("#chests").parent().removeClass("active");
+        $("#company-search").parent().removeClass("active");
+        $("#space-settings").parent().removeClass("active");
+        $("#settings").parent().removeClass("active");
+        var catid = $(this).attr("classrelated");
+        $.get('/DC/resources/' + catid + '/', function(data, status){
+            $('.card-body').html(data.content);
+      })
+    });
+
+    $('#space-settings').click(
+      function(){
+        $("#space-settings").parent().addClass("active");
+        $("#company-search").parent().removeClass("active");
+        $("#chests").parent().removeClass("active");
+        $("#profile").parent().removeClass("active");
+        $("#settings").parent().removeClass("active");
+        var catid = $(this).attr("classrelated");
+        $.get('/DC/resources/' + catid + '/', function(data, status){
+            $('.card-body').html(data.content);
+      })
+    });
+
+    $('#settings').click(
+      function(){
+        $("#settings").parent().addClass("active");
+        $("#company-search").parent().removeClass("active");
+        $("#chests").parent().removeClass("active");
+        $("#profile").parent().removeClass("active");
+        $("#space-settings").parent().removeClass("active");
+        var catid = $(this).attr("classrelated");
+        $.get('/DC/resources/' + catid + '/', function(data, status){
+            $('.card-body').html(data.content);
+      })
+    });
+
+    $("#chests").trigger('click');
+
     $().ready(function() {
       $sidebar = $('.sidebar');
 

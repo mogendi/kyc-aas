@@ -1,0 +1,106 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-warning card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">content_copy</i>
+              </div>
+              <p class="card-category">Used Space</p>
+              <h3 class="card-title">{{ size }} / {{ lim }}
+                <small>MB</small>
+              </h3>
+            </div>
+            <div class="card-footer">
+            {% if dng is True %}
+              <div class="stats">
+                <i class="material-icons text-danger">warning</i>
+                <a href="javascript:;">Get More Space.</a>
+              </div>
+            {% else %}
+              <div class="stats">
+                <i class="material-icons">thumb_up</i>
+                <a href="javascript:;">Theres space available.</a>
+              </div>
+            {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 col-sm-6">
+          <div class="card card-stats">
+            <div class="card-header card-header-success card-header-icon">
+              <div class="card-icon">
+                <i class="material-icons">lock_open</i>
+              </div>
+              <p class="card-category">Total chest hits</p>
+              <h3 class="card-title">{{ n_hits }}</h3>
+            </div>
+            <div class="card-footer">
+              <div class="stats">
+                <i class="material-icons">date_range</i> Since sign up
+              </div>
+            </div>
+          </div>
+        </div>
+
+    </div>
+
+    <div class="row">
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="col-md">
+                    <div class="card">
+                      <div class="card-header card-header-primary">
+                        <h4 class="card-title ">Chests</h4>
+                        {% if n_chests > 0 %}
+                        <p class="card-category"> Here are all your chests! </p>
+                        {% else %}
+                        <p class="card-category"> There is nothing here YET! </p>
+                        {% endif %}
+                      </div>
+                      <div class="card-body">
+                          {% if n_chests > 0 %}
+                          <div class="table-responsive">
+                            <table class="table">
+                              <thead class=" text-primary">
+                                <tr><th>ID</th><th>Name</th><th>Size</th></tr></thead>
+                              <tbody>
+                                {% for c in chests %}
+                                <tr><td>{{c.chest_ID}}</td><td>{{c.chest_name}}</td><td class="text-primary">{{c.chest_size}}</td></tr>
+                                {% endfor %}
+                              </tbody>
+                            </table>
+                          </div>
+                          {% else %}
+                          <div id="typography">
+                            <div class="card-title">
+                              <h2>You have no chests YET.</h2>
+                            </div>
+                            {% endif %}
+                            <div class="row" style="padding-left: 1.5%;">
+                                <h6>Create a new chest <a href="#" id="new-chest">here</a> </h6>
+                            </div>
+                          </div>
+                      </div>
+                    </div>
+                  </div>
+            </div>
+        </div>
+        
+    </div>
+
+</div>
+
+<script>
+    $(document).ready(function() {
+      $('#new-chest').click(
+          function(){
+              $.get('new_chest/', function(data, status){
+                  $('.content').html(data);
+              });
+          }
+      );
+  });
+</script>
