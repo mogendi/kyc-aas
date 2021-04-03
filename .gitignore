@@ -5,4 +5,3 @@
 *user/
 *.pyc
 *static/
-*.sqlite3
