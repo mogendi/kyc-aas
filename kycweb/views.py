@@ -5,9 +5,9 @@ from .forms import UserForm, UsrForm, FileForm
 from .models import ChestRegistry, Chest, Usr, FileInstances, HitsRegistry, User
 from django.views import generic
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.core.files.storage import FileSystemStorage
-import pathlib, os, sys, pytesseract, pdf2image, PIL, io, numpy, re
+import pathlib, os, sys, pytesseract, pdf2image, PIL, io, numpy, re, requests, json
 from PIL import ImageEnhance, ImageOps
 
 LIMIT = 100000000
@@ -121,7 +121,112 @@ def new_file(c, r, fn=None):
             ft = pathlib.Path(fa.name).suffix
             FileInstances.objects.create(chest=c, upload_path=up, file_type=file_type(ft))
         return True
-              
+
+'''
+Extract and RE pattern from image if it can
+'''
+def image_extractor(ptn, fa):
+    fa.seek(0)
+    fc = fa.read()
+    ft = file_type(pathlib.Path(fa.name).suffix)
+    if ft == "document":
+        pages = pdf2image.convert_from_bytes(fc)
+        dct = ""
+        for pg in pages:
+            pg = pg.convert('RGBA')
+            data = numpy.array(pg)
+            red, green, blue, alpha = data.T
+            black_to_gray = (red > 140) & (blue > 130) & (green > 128)
+            data[..., :-1][black_to_gray.T] = (255, 255, 255) 
+            pg = PIL.Image.fromarray(data)
+            txt = pytesseract.image_to_string(pg)
+            dct = dct + txt + "\n"    
+        idn = re.search(ptn, dct)
+        if idn:
+            return idn.group()
+        else:
+            return False
+    if ft == "image":
+        img = PIL.Image.open(io.BytesIO(fc))
+        img = img.convert('RGBA')
+        data = numpy.array(img)
+        red, green, blue, alpha = data.T
+        black_to_gray = (red > 140) & (blue > 130) & (green > 128)
+        data[..., :-1][black_to_gray.T] = (255, 255, 255) 
+        img = PIL.Image.fromarray(data)
+        txt = pytesseract.image_to_string(img)
+        idn = re.search(ptn, txt)
+        if idn:
+            return idn.group()
+        else:
+            return False
+
+'''
+Get a bearer token for the searches
+'''
+def get_bearer_token():
+    data = {
+        "username": "8448779624",
+        "password": "qbHfd0CuiElByORb2VSkw55fTnXRHPlN"
+    }
+    headers = {
+        "Authorization": "Basic TENkRjdjd2RWclN3YmtOOVppNUdyd2ZNRTNDSVFveUU6VnM3a3dwemVaVjRwSklBbA=="
+    }
+    r = requests.post("https://sandbox.jengahq.io/identity-test/v2/token/", data=data, headers=headers)
+    print(r)
+    return r
+
+'''
+Accepts ID uploads and checks their validity, ext of new file
+'''
+def check_id(r):
+    fa = r.FILES.get("userid")
+    idn = image_extractor(r'[0-9]{8}', fa)
+    if idn:
+        headers = {
+            "Authentication": str(get_bearer_token())
+        }
+        data = {
+            "id": "34938447"
+        }
+        r = requests.post("https://sandbox.jengahq.io/identity-test/v2/token", headers=headers, data=data).json()
+        print(r)
+        ctx = {
+            'verified': True,
+        }
+        return JsonResponse(ctx)
+    else:
+        ctx = {
+            'verified': False,
+        }
+        return JsonResponse(ctx)
+
+'''
+Accept KRA files and checks their validity
+'''
+def check_kra(r):
+    fa = r.FILES.get("userkra")
+    idn = image_extractor(r'[A-G][0-9]{9}[A-G]', fa)
+    if idn:
+        print(idn)
+        ctx = {
+            'verified': True,
+        }
+        return JsonResponse(ctx)
+    else:
+        ctx = {
+            'verified': True,
+        }
+        return JsonResponse(ctx)
+
+'''
+New Banking auth instance. This 
+only exists as an abstract 'Model',
+and extention of the Chest Model 
+'''
+class BankingChestCreateView(LoginRequiredMixin, generic.View):
+    pass
+
 '''
 New chest post form loader
 '''
@@ -143,67 +248,3 @@ class ChestCreateView(LoginRequiredMixin, generic.View):
             for i in range(0, nfls):
                 new_file(chest, r)
         return redirect("/")
-
-'''
-Extract and RE pattern from image if it can
-'''
-def image_extractor(ptn, fa):
-    fa.seek(0)
-    fc = fa.read()
-    ft = file_type(pathlib.Path(fa.name).suffix)
-    if ft == "document":
-        pages = pdf2image.convert_from_bytes(fc)
-        dct = ""
-        for pg in pages:
-            pg = pg.convert('RGBA')
-            data = numpy.array(pg)
-            red, green, blue, alpha = data.T
-            black_to_gray = (red > 140) & (blue > 130) & (green > 128)
-            data[..., :-1][black_to_gray.T] = (255, 255, 255) 
-            pg = PIL.Image.fromarray(data)
-            pg.show()
-            txt = pytesseract.image_to_string(pg)
-            dct = dct + txt + "\n"    
-        idn = re.search(ptn, dct)
-        if idn:
-            print(idn.group())
-            return idn.group()
-        else:
-            return False
-    if ft == "image":
-        img = PIL.Image.open(io.BytesIO(fc))
-        img = img.convert('RGBA')
-        data = numpy.array(img)
-        red, green, blue, alpha = data.T
-        black_to_gray = (red > 140) & (blue > 130) & (green > 128)
-        data[..., :-1][black_to_gray.T] = (255, 255, 255) 
-        img = PIL.Image.fromarray(data)
-        img.show()
-        txt = pytesseract.image_to_string(img)    
-        idn = re.search(ptn, txt)
-        if idn:
-            print(idn.group())
-            return idn.group()
-        else:
-            return False
-
-'''
-Accepts ID uploads and checks their validity, ext of new file
-'''
-def check_id(r):
-    fa = r.FILES.get("userid")
-    idn = image_extractor(r'[0-9]{8}', fa)
-    if idn:
-        #do a api hit for the id number
-        return HttpResponse(idn)
-    else:
-        #This section needs a formatted response for the error
-        return HttpResponse(idn)
-
-'''
-New Banking auth instance. This 
-only exists as an abstract 'Model',
-and extention of the Chest Model 
-'''
-class BankingChestCreateView(LoginRequiredMixin, generic.View):
-    pass  

@@ -51,7 +51,7 @@
           </div>
           <!-- TAB 2 -->
           <input type="text" value="" id="form-flag" name="size-flag" hidden/>
-          <div class="tab" id="banking" style="display: none;">
+          <div class="tab" id="other" style="display: none;">
             <div class="row">
               <div class="col-md-10">
                 <div class="form-group bmd-form-group">
@@ -72,11 +72,10 @@
                 <button type="button" class="btn btn-primary pull-right" id="newField" onclick="removeFileField()">Remove a file</button>
               </div>
             </div>
-            <div class="error-field" id="error-field"></div>
             <div class="clearfix"></div>
           </div>
           <!-- TAB 3 -->
-          <div class="tab" id="work" style="display: none;">
+          <div class="tab" id="banking" style="display: none;">
             <div class="row">
               <div class="col-md-4">
                 <div class="form-group bmd-form-group">
@@ -91,10 +90,22 @@
                 </div>
               </div>
             </div>
-            <div class="row" id="chest-file-1">
+            <div class="row" id="bnk-id">
               <div class="col-md-10">
                 <label class="bmd-label-floating">Add your ID</label>
                 <input type="file" class="form-control-file" name="userid" id="userid" onchange="checkid()">
+              </div>
+            </div>
+            <div class="row" id="bnk-kra" hidden>
+              <div class="col-md-10">
+                <label class="bmd-label-floating">Add your KRA cert</label>
+                <input type="file" class="form-control-file" name="userid" id="userkra" onchange="checkkra()">
+              </div>
+            </div>
+            <div class="row" id="bnk-utility" hidden>
+              <div class="col-md-10">
+                <label class="bmd-label-floating">Add a Utility Bill</label>
+                <input type="file" class="form-control-file" name="userid" id="userkra" onchange="checkkra()">
               </div>
             </div>
             <div class="clearfix"></div>
@@ -126,6 +137,7 @@
             <span class="step"></span>
           </div>
         </form>
+        <div class="error-field" id="error-field"></div>
         <progress id="progress" hidden></progress>
       </div>
     </div>
@@ -268,20 +280,32 @@
       ff = document.getElementById(ffid);
       ff.parentNode.removeChild(ff);
     }
-    function send_data(data, url){
+    function send_data(data, url, step=1){
       console.log( 'Sending data' );
 
       const XHR = new XMLHttpRequest();
+      document.getElementById("error-field").innerText = "";
 
       XHR.addEventListener( 'load', function(event) {
-        return true;
-      } );
+        let v = JSON.parse(event.target.response);
+        document.getElementById("progress").setAttribute("hidden", "true");
+        if(!v.verified){
+          var ef = document.getElementById("error-field");
+          ef.innerText = "Document not valid/readable, please ensure all contents are visible in your document.";
+        } else {
+          if(step == 1){
+            document.getElementById("bnk-kra").removeAttribute("hidden");
+          }
+          if(step == 2){
+            document.getElementById("bnk-utility").removeAttribute("hidden");
+          }
+        }
+      });
       XHR.addEventListener( 'error', function(event) {
         return event;
       } );
       XHR.open('POST', url);
       XHR.send( data );
-
     }
 
     function checkid(){
@@ -291,7 +315,16 @@
       frm.append("csrfmiddlewaretoken", '{{csrf_token}}' );
       frm.append("userid", id);
       document.getElementById("progress").removeAttribute("hidden");
-      send_data(frm, url.protocol + "//" + url.host + "/" + "check/id/");
-      document.getElementById("progress").setAttribute("hidden", "true");
+      send_data(frm, url.protocol + "//" + url.host + "/" + "check/id/", 1);
+    }
+
+    function checkkra(){
+      let id = document.getElementById("userkra").files[0];
+      let frm = new FormData();
+      var url = window.location;
+      frm.append("csrfmiddlewaretoken", '{{csrf_token}}' );
+      frm.append("userkra", id);
+      document.getElementById("progress").removeAttribute("hidden");
+      send_data(frm, url.protocol + "//" + url.host + "/" + "check/kra/", 2);
     }
   </script>
