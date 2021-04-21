@@ -80,7 +80,7 @@
               <div class="col-md-4">
                 <div class="form-group bmd-form-group">
                   <label class="bmd-label-floating">Full Names</label>
-                  <input type="text" class="form-control">
+                  <input type="text" class="form-control" id="uname" name="uname">
                 </div>
               </div>
               <div class="col-md-4">
@@ -89,8 +89,14 @@
                   <input type="date" id="bd" name="bd">
                 </div>
               </div>
+              <div class="col-md-4">
+                <div class="form-group bmd-form-group">
+                  <label class="bmd-label-floating">Enter your address</label>
+                  <input type="text" class="form-control" id="uaddress" name="uaddress" onchange="validatedocs()">
+                </div>
+              </div>
             </div>
-            <div class="row" id="bnk-id">
+            <div class="row" id="bnk-id" hidden>
               <div class="col-md-10">
                 <label class="bmd-label-floating">Add your ID</label>
                 <input type="file" class="form-control-file" name="userid" id="userid" onchange="checkid()">
@@ -99,13 +105,13 @@
             <div class="row" id="bnk-kra" hidden>
               <div class="col-md-10">
                 <label class="bmd-label-floating">Add your KRA cert</label>
-                <input type="file" class="form-control-file" name="userid" id="userkra" onchange="checkkra()">
+                <input type="file" class="form-control-file" name="userkra" id="userkra" onchange="checkkra()">
               </div>
             </div>
             <div class="row" id="bnk-utility" hidden>
               <div class="col-md-10">
                 <label class="bmd-label-floating">Add a Utility Bill</label>
-                <input type="file" class="form-control-file" name="userid" id="userkra" onchange="checkkra()">
+                <input type="file" class="form-control-file" name="useutil" id="userutil" onchange="checkkra()">
               </div>
             </div>
             <div class="clearfix"></div>
@@ -116,7 +122,7 @@
               <div class="col-md-10">
                 <div class="form-group bmd-form-group">
                   <p>Select what the chest is for</p>
-                  <select id="chest-types" name="carlist" class="form-control">
+                  <select id="chest-types" name="chest-types" class="form-control">
                     <option value="bnk">Banking</option>
                     <option value="wrk">Work</option>
                     <option value="prs">Personal</option>
@@ -226,18 +232,11 @@
           }
         }
       }
+      if(jump_to==1 && currentTab>0){
+        document.getElementById("regForm").action = "{% url 'new_banking_auth' %}";
+      }
       else{
-        x = document.getElementsByClassName("tab");
-        y = x[currentTab].getElementsByTagName("input");
-        var wbid = eml = phn = "";
-        var amnt = 0;
-        for (i = 0; i < y.length; i++) {
-          console.log(y[i].value);
-          if (y[i].value == "") {
-            y[i].className += " invalid";
-            valid = false;
-          }
-        }
+        valid = true;
       }
     
       // If the valid status is true, mark the step as finished and valid:
@@ -308,22 +307,46 @@
       XHR.send( data );
     }
 
+    function validatedocs(){
+      document.getElementById("bnk-id").removeAttribute("hidden");
+    }
+
     function checkid(){
       let id = document.getElementById("userid").files[0];
+      let un = document.getElementById("uname").value;
+      let bd = document.getElementById("bd").value;
+      let adr = document.getElementById("uaddress").value;
+      if(bd == "" || un == "" || adr == ""){
+        document.getElementById("error-field").innerText = "Please Enter all your details"
+        return;
+      }
       let frm = new FormData();
       var url = window.location;
       frm.append("csrfmiddlewaretoken", '{{csrf_token}}' );
       frm.append("userid", id);
+      frm.append("uname", un);
+      frm.append("bd", bd);
+      frm.append("uaddress", adr);
       document.getElementById("progress").removeAttribute("hidden");
       send_data(frm, url.protocol + "//" + url.host + "/" + "check/id/", 1);
     }
 
     function checkkra(){
       let id = document.getElementById("userkra").files[0];
+      let un = document.getElementById("uname").value;
+      let bd = document.getElementById("bd").value;
+      let adr = document.getElementById("uaddress").value;
+      if(bd == "" || un == "" || adr == ""){
+        document.getElementById("error-field").innerText = "Please Enter all your details"
+        return;
+      }
       let frm = new FormData();
       var url = window.location;
       frm.append("csrfmiddlewaretoken", '{{csrf_token}}' );
       frm.append("userkra", id);
+      frm.append("uname", un);
+      frm.append("bd", bd);
+      frm.append("uaddress", adr);
       document.getElementById("progress").removeAttribute("hidden");
       send_data(frm, url.protocol + "//" + url.host + "/" + "check/kra/", 2);
     }
