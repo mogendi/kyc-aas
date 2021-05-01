@@ -1,3 +1,352 @@
+<style>
+   /* The switch - the box around the slider */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+  }
+
+  .border-icn {
+    border: 3px solid;
+  }
+
+  /* Hide default HTML checkbox */
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  /* The slider */
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+  }
+
+  input:checked + .slider {
+    background-color: #2196F3;
+  }
+
+  input:focus + .slider {
+    box-shadow: 0 0 1px #2196F3;
+  }
+
+  input:checked + .slider:before {
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+    transform: translateX(26px);
+  }
+
+  /* Rounded sliders */
+  .slider.round {
+    border-radius: 34px;
+  }
+
+  .slider.round:before {
+    border-radius: 50%;
+  } 
+</style>
+{% csrf_token %}
 <div class="container-fluid">
-    
+    <div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header card-header-tabs card-header-primary">
+              <div class="nav-tabs-navigation">
+                <div class="nav-tabs-wrapper">
+                  <ul class="nav nav-tabs" data-tabs="tabs">
+                    <li class="nav-item">
+                      <a class="nav-link active" href="#" data-toggle="tab" id="fl_tab">
+                        <i class="material-icons">text_snippet</i>Files
+                        <div class="ripple-container"></div>
+                      </a>
+                    </li>
+                    <li class="nav-item">
+                      <a class="nav-link" href="#" data-toggle="tab" id="perm_tab">
+                        <i class="material-icons">admin_panel_settings</i>Permissions
+                        <div class="ripple-container"></div>
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="tab-content">
+                <div class="tab-pane active" id="files">
+                  <table class="table">
+                    <tbody class="files">
+                      <tr></tr>
+                    {% for f in files%}
+                      <tr>
+                        <td>{{ f.get_file_name }}</td>
+                        <td>{{ f.file_type }}</td>
+                        <td class="td-actions text-right">
+                          <button type="button" rel="tooltip" title="" class="btn btn-primary btn-link btn-sm" data-original-title="Edit Task">
+                            <a href="download/file/{{f.id}}"> 
+                                <i class="material-icons border-icn">download</i>
+                            </a>
+                          </button>
+                        </td>
+                        {% if not chest.auth_chest %}
+                        <td class="td-actions text-right">
+                          <button type="button" rel="tooltip" title="" class="btn btn-danger btn-link btn-sm" fid={{f.id}}
+                                  data-original-title="Remove" aria-describedby="tooltip641266" onclick="delete_file('file', this)">
+                            <i class="material-icons border-icn">delete</i>
+                          </button>
+                        </td>
+                        {% endif %}
+                      </tr>
+                    {% endfor %}
+                    </tbody>
+                  </table>
+                  {% if not chest.auth_chest %}
+                  <p class="text-info"><strong>Add files to the chest</strong></p>
+                  <div class="row" id="chest-file-1">
+                    <div class="col-md-10">
+                      <label class="bmd-label-floating">New File</label>
+                      <input type="file" class="form-control-file" name="chest-file-other-1" id="chest-file-input-1">
+                    </div>
+                  </div>
+                  <div class="row" id="file-adder">
+                    <div class="col-md">
+                      <button type="button" class="btn btn-primary pull-right" id="newField" onclick="new_file_field()">Add more Files</button>
+                      <button type="button" class="btn btn-primary pull-right" id="newField" onclick="remove_file_field()">Remove a file</button>
+                    </div>
+                  </div>
+                  <div class="row" id="submit-btn">
+                    <div class="col-md">
+                      <button type="button" class="btn btn-primary pull-right" id="newField" onclick="extend_chest()">Upload Files</button>
+                    </div>
+                  </div>
+                  <p class="text-danger" id="err_ext_chest"></p>
+                  {% endif %}
+                </div>
+                <div class="tab-pane" id="permissions">
+                  {% if chest.auth_chest %}
+                  <p class="text-danger"><strong>NOTE: any permission changes in this chest will affect your auth-level and may prevent you from accessing certain applications.</strong>This is an authentication chest for {{ chest.application }}.</p>
+                  {% endif %}
+                  <p class="text-info"><strong>Set access permissions for specific users</strong></p>
+                  <table class="table table_permissions">
+                    <tbody class="perm">
+                      <tr></tr>
+                      {% for u in users %}
+                      <tr>
+                        <td>
+                          {% if u.usr is None %}
+                            {{ u.corporation.key }}
+                          {% endif %}
+                          {% if u.usr is not None %}
+                            {{ u.usr.ctx_id }}
+                          {% endif %}
+                        </td>
+                        <td>
+                          {% if u.usr is None %}
+                            {{ u.corporation.name }}
+                          {% endif %}
+                          {% if u.usr is not None %}
+                            {{ u.usr.def_usr.username }}
+                          {% endif %}
+                        </td>
+                        <td>
+                          {% if u.access %}
+                          <label class="switch">
+                            <input type="checkbox"
+                                  reg_id={{u.id}}
+                                  onclick="switch_perm('perm', this)"
+                                  checked>
+                            <span class="slider round"></span>
+                          </label>
+                          {% else %}
+                          <label class="switch">
+                            <input type="checkbox"
+                                  onclick="switch_perm('perm', this)"
+                                  reg_id={{u.id}}>
+                            <span class="slider round"></span>
+                          </label>
+                          {% endif %}
+                        </td>
+                        <td>
+                          <a href="#" onclick="remove_perm('user', this)" reg_id={{u.id}}> 
+                            <i class="material-icons border-icn">close</i>
+                          </a>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                  </table>
+                  <p class="text-info"><strong>Add new permissions for users/corporations</strong></p>
+                  <div class="form-group bmd-form-group">
+                    <label class="bmd-label-floating">The user/corporation ID</label>
+                    <input type="text" aria-label="ID" id="new_perm" class="form-control">
+                    <button id="new_perm_s" class="btn btn-primary pull-right" onclick="add_perm()">Add Permission</button>
+                    <p id="cup_err" class="text-danger"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
 </div>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+
+    var node_count = 1;
+
+    function switch_perm(string, el){
+      $(el).prop('disabled', true);
+      $.post("switch/permissions/" + $(el).attr('reg_id'), {csrfmiddlewaretoken :'{{csrf_token}}'},
+        function(status){
+            $(el).removeAttr('disabled');
+        });
+    }
+
+    function delete_file(string, el){
+      var fid = $(el).attr('fid');
+      $.post('delete/file/' + fid, {csrfmiddlewaretoken :'{{csrf_token}}'},
+        function(data){
+          if(data.deleted){
+            $(el).parent().parent().remove();
+            $("#auth_level").html(data.lv);
+        }
+      });
+    }
+
+    function new_file_field(){
+      var org = document.getElementById("chest-file-1");
+      var clone = org.cloneNode(true);
+      node_count += 1;
+      clone.id = "chest-file-" + node_count;
+      var inp = clone.getElementsByTagName("input")[0];
+      inp.id = "chest-file-input-" + node_count;
+      var btn = document.getElementById("file-adder");
+      var btn2 = document.getElementById("submit-btn");
+      var pr = btn.parentNode;
+      pr.removeChild(btn);
+      pr.removeChild(btn2);
+      pr.appendChild(clone);
+      pr.appendChild(btn);
+      pr.appendChild(btn2);
+    }
+
+    function remove_file_field(){
+      if(node_count == 1){
+        return;
+      }
+      ffid = "chest-file-" + node_count;
+      node_count -= 1;
+      ff = document.getElementById(ffid);
+      ff.parentNode.removeChild(ff);
+    }
+
+    function extend_chest(){
+      $("#err_ext_chest").html("");
+      let f = new FormData();
+      f.append("csrfmiddlewaretoken", '{{csrf_token}}');
+      f.append("chest", '{{chest.id}}' );
+      var i = node_count;
+      for(i; i>0; i--){
+        var name = "chest-file-input-" + i;
+        console.log(node_count);
+        var fl =  document.getElementById(name);
+        $("#" + name).parent().css("border", "");
+        if(fl.files.length == 0) {
+          $("#err_ext_chest").html("Ensure all file fields have file inputs");
+          $("#" + name).parent().css("border-left", "3px solid #f6665b");
+          return;
+        }
+        f.append(name, fl.files[0]);
+        if(i>1){
+          remove_file_field();
+        }
+        if(i == 1){
+          var p = fl.parentNode;
+          let nfl = fl.cloneNode();
+          nfl.value = '';
+          fl.remove();
+          p.append(nfl);
+        }
+      }
+      $.ajax({
+          url : "extend/chest/",
+          type: "POST",
+          data : f,
+          processData: false,
+          contentType: false,
+          success:function(data){
+              $(".files").append(data);
+          }
+      });
+      console.log(f);
+    }
+
+    $("#perm_tab").click( function(){
+      $("#files").removeClass("active");
+      $("#permissions").addClass("active");
+    });
+
+    $("#fl_tab").click( function(){
+      $("#permissions").removeClass("active");
+      $("#files").addClass("active");
+    });
+
+    function add_perm(){
+      var uid = $("#new_perm").val();
+      if(uid == "" || uid == null || 
+         uid.length < 12 || uid.length > 12){
+          $("#cup_err").html("Please input a valid ID (12 letters)");
+          return;
+      } else {
+        $.post("add/permissions/" + uid, {csrfmiddlewaretoken :'{{csrf_token}}', chest :'{{chest.chest_ID}}'},
+        function(data){
+          if(data.error == null){
+            $("#new_perm").val("");
+            $.get("get/indv/perm/" + data.registry, function(data){
+                $(".perm").append(data);
+            });
+          } else {
+            $("#cup_err").html("Please input a valid ID (12 letters)");
+            return
+          }
+        });
+      }
+    }
+
+    function remove_perm(string, perm){
+      $.post("remove/permissions/" + $(perm).attr("reg_id"), {csrfmiddlewaretoken :'{{csrf_token}}'},
+      function(data){
+        if(data.deleted) { $(perm).parent().parent().remove(); }
+      });
+    }
+
+    window.add_perm = add_perm;
+    window.remove_perm = remove_perm;
+    window.switch_perm = switch_perm;
+    window.delete_file = delete_file;
+    window.new_file_field = new_file_field;
+    window.extend_chest = extend_chest;
+    window.remove_file_field = remove_file_field;
+  });
+</script>

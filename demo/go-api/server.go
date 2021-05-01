@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const port = ":8000"
+const port = ":8001"
 
 // IndexHandler handles requests for the "/identification" resource
 func IndexHandler(w http.ResponseWriter, r *http.Request) {

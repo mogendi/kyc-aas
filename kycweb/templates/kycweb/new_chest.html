@@ -110,8 +110,13 @@
             </div>
             <div class="row" id="bnk-utility" hidden>
               <div class="col-md-10">
-                <label class="bmd-label-floating">Add a Utility Bill</label>
-                <input type="file" class="form-control-file" name="useutil" id="userutil" onchange="checkkra()">
+                <label class="bmd-label-floating">Add a Passport Photo</label>
+                <input type="file" class="form-control-file" name="userpp" id="userpp" onchange="checkpp()">
+              </div>
+            </div>
+            <div class="row" id="bnk-utility">
+              <div class="col-md-10">
+                <p id="confirmation" class="text-info"></p>
               </div>
             </div>
             <div class="clearfix"></div>
@@ -233,7 +238,14 @@
         }
       }
       if(jump_to==1 && currentTab>0){
+        var id = document.getElementById("userid");
+        var kra = document.getElementById("userkra");
+        var pp = document.getElementById("userutil");
         document.getElementById("regForm").action = "{% url 'new_banking_auth' %}";
+        if(id.files.length == 0 || kra.files.length == 0 || pp.files.length == 0) {
+          document.getElementById("error-field").innerText = "Please fill out the entire form";
+          valid = false;
+        }
       }
       else{
         valid = true;
@@ -298,6 +310,10 @@
           if(step == 2){
             document.getElementById("bnk-utility").removeAttribute("hidden");
           }
+          if(step == 3){
+            document.getElementById("confirmation")
+              .innerHTML = "Your documents have been verified."
+          }
         }
       });
       XHR.addEventListener( 'error', function(event) {
@@ -349,5 +365,17 @@
       frm.append("uaddress", adr);
       document.getElementById("progress").removeAttribute("hidden");
       send_data(frm, url.protocol + "//" + url.host + "/" + "check/kra/", 2);
+    }
+
+    function checkpp(){
+      let id = document.getElementById("userid").files[0];
+      let pp = document.getElementById("userpp").files[0];
+      let frm = new FormData();
+      var url = window.location;
+      frm.append("csrfmiddlewaretoken", '{{csrf_token}}' );
+      frm.append("userid", id);
+      frm.append("pic", pp);
+      document.getElementById("progress").removeAttribute("hidden");
+      send_data(frm, url.protocol + "//" + url.host + "/" + "check/pic/", 3);
     }
   </script>

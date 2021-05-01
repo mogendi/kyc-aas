@@ -1,0 +1,19 @@
+{% for f in files%}
+    <tr>
+    <td>{{ f.get_file_name }}</td>
+    <td>{{ f.file_type }}</td>
+    <td class="td-actions text-right">
+        <button type="button" rel="tooltip" title="" class="btn btn-primary btn-link btn-sm" data-original-title="Edit Task">
+        <a href="download/file/{{f.id}}"> 
+            <i class="material-icons border-icn">download</i>
+        </a>
+        </button>
+    </td>
+    <td class="td-actions text-right">
+        <button type="button" rel="tooltip" title="" class="btn btn-danger btn-link btn-sm" fid={{f.id}}
+                data-original-title="Remove" aria-describedby="tooltip641266" onclick="delete_file('file', this)">
+        <i class="material-icons border-icn">delete</i>
+        </button>
+    </td>
+    </tr>
+{% endfor %}

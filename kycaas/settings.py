@@ -26,7 +26,7 @@ SECRET_KEY = 'lsz6^ptrh-k2t%p412vixia%(5os76iexkonqnfyf_+hou1*m2'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -125,7 +125,5 @@ LOGIN_REDIRECT_URL = '/kycweb/home'
 LoGOUT_REDIRECT_URL = 'login/'
 LOGIN_URL='login/'
 
-STATICFILES_DIRS = (
-    os.path.join(BASE_DIR, "static"),
-    os.path.join(BASE_DIR, 'templates/kycweb/assets/js'),
-)
+STATIC_ROOT = os.path.join(BASE_DIR, 'kycweb/static')
+

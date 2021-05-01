@@ -1,0 +1,41 @@
+<tr>
+    <td>
+      {% if u.corporation is not None %}
+        {{ u.corporation.key }}
+      {% endif %}
+      {% if u.usr is not None %}
+        {{ u.usr.ctx_id }}
+      {% endif %}
+    </td>
+    <td>
+      {% if u.corporation is not None %}
+        {{ u.corporation.name }}
+      {% endif %}
+      {% if u.usr is not None %}
+        {{ u.usr.def_usr.username }}
+      {% endif %}
+    </td>
+    <td>
+      {% if u.access %}
+      <label class="switch">
+        <input type="checkbox"
+              reg_id={{u.id}}
+              id="permSwitch"
+              checked>
+        <span class="slider round"></span>
+      </label>
+      {% else %}
+      <label class="switch">
+        <input type="checkbox"
+              id="permSwitch"
+              reg_id={{u.id}}>
+        <span class="slider round"></span>
+      </label>
+      {% endif %}
+    </td>
+    <td>
+      <a href="#" onclick="remove_perm('user', this)" reg_id={{u.id}}> 
+        <i class="material-icons border-icn">close</i>
+      </a>
+    </td>
+  </tr>

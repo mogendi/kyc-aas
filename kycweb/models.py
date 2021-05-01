@@ -5,11 +5,12 @@ from django.core.files.base import File
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
-import random, string, os
+import random, string, os, ntpath, shutil
 from django.db.models.base import Model
 
 from django.db.models.deletion import CASCADE, SET, SET_NULL
 from django.db.models.fields.related import ForeignKey
+from numpy.lib.shape_base import _apply_over_axes_dispatcher
 
 def upload_folder(instance, filename):
     return '{0}'.format(instance.chest.chest_dir)
@@ -64,6 +65,8 @@ class Chest(models.Model):
     created_by = models.ForeignKey(Usr, related_name="Chest", on_delete=models.CASCADE)
     chest_dir = models.CharField(max_length=400)
     chest_size = models.CharField(max_length=100, blank=False)
+    auth_chest = models.BooleanField(default=False)
+    application = models.CharField(max_length=400, null=True, blank=True)
 
     def set_size(self):
         ttl_size = 0
@@ -87,6 +90,14 @@ class Chest(models.Model):
         self.set_size()
         super(Chest, self).save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        if len(self.chest_dir)>1:
+            try:
+                shutil.rmtree(self.chest_dir)
+            except:
+                pass
+        super(Chest, self).delete(*args, **kwargs)
+
     def __str__(self):
         return self.chest_name
 
@@ -108,6 +119,10 @@ class FileInstances(models.Model):
             self.chest.chestsize = str(nbytes)
         super(FileInstances, self).save(*args, **kwargs)
 
+    def get_file_name(self):
+        head, tail = ntpath.split(self.upload_path)
+        return tail or ntpath.basename(head)
+
     def __str__(self):
         return self.upload_path
 '''
@@ -118,14 +133,17 @@ just like banking and work types, though some verification
 is required for this to be valid.
 '''
 class Corporation(models.Model):
-    key = models.CharField(max_length=14)
+    key = models.CharField(max_length=14, blank=True, null=True)
     name = models.CharField(max_length=100, blank=False)
-    chest = models.ForeignKey(Chest, on_delete=models.CASCADE, blank=True, default=None)
+    chest = models.ForeignKey(Chest, on_delete=models.CASCADE, blank=True, null=True, default=None)
 
     def save(self, *args, **kwargs):
         ltrs = string.ascii_lowercase
-        self.key = ''.join(random.choice(ltrs) for i in 12)
-        super(Chest, self).save(*args, **kwargs)
+        self.key = ''.join(random.choice(ltrs) for i in range(12))
+        super(Corporation, self).save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
 
 '''
 Auth level for users of the system. Depending on the auth level
@@ -135,18 +153,20 @@ accepted by corporations oboarding systems
 class AuthLevel(models.Model):
     # each application has a specified chest instance
     # this points to what the user is authed for
-    chest = models.ForeignKey(Chest, on_delete=CASCADE) 
+    chest = models.ForeignKey(Chest, on_delete=CASCADE, related_name="auth_information_source", null=True, blank=True) 
     # The Auth level can either be:
-    # none             - no auth related information is provided 
-    # banking-[1-3]    - will accept banking applications,
-    # work             - will accept HR related applications,
-    level = models.CharField(max_length=256, default="none")
-    user = models.ForeignKey(Usr, related_name="user", on_delete=models.CASCADE)
+    # none: 0             - no auth related information is provided 
+    # banking: [1-3]    - will accept banking applications,
+    # work: [1-3]             - will accept HR related applications,
+    app = models.CharField(max_length=256, default="none")
+    level = models.IntegerField(verbose_name="Auth level", default=0)
+    max = models.BooleanField(default=False, verbose_name="Max_auth_for_application")
+    user = models.ForeignKey(Usr, related_name="auth_user", on_delete=models.CASCADE)
     # decides if applications can access the user chests 
-    enabled = models.BooleanField(verbose_name="external auth enabled")
+    enabled = models.BooleanField(verbose_name="external auth enabled", default=False)
 
     def __str__(self) -> str:
-        return self.level + " " + "for" + " " + self.user.def_usr.username
+        return self.app + ":" + str(self.level) + " " + "for" + " " + self.user.def_usr.username
     
 '''
 registry of all hits to a specific chest
@@ -171,15 +191,15 @@ permissions model kind of.
 class ChestRegistry(models.Model):
     # needs 2 foreign keys for a user/coorp
     # and the specified chest
-    usr = models.ForeignKey(Usr, blank=True, on_delete=models.CASCADE)
+    usr = models.ForeignKey(Usr, blank=True, null=True, on_delete=models.CASCADE)
     chest = models.ForeignKey(Chest, on_delete=models.CASCADE)
-    corporation = models.ForeignKey(Corporation, blank=True, on_delete=models.CASCADE)
+    corporation = models.ForeignKey(Corporation, blank=True, null=True, on_delete=models.CASCADE)
     # control whether or not the user has access
     # controls whether SPECIFIC users/applications can access certain chests
     # the more general auth models are protected by "AUTHLEVEL" this
     # could also be seen as a block functionality, certain applications
     # can explicitly be banned from using certain chests
-    access = models.BooleanField(verbose_name="user access", default=True)
+    access = models.BooleanField(verbose_name="user access", default=False)
 
 '''
 a generic chest type that is specifically meant for storing
@@ -195,18 +215,20 @@ class BankingChestType(models.Model):
     utility = ForeignKey(FileInstances, on_delete=SET_NULL, null=True, blank=True, related_name="utility")
 
     def gen_auth_level(self):
-        if self.bnk_id is None:
-            AuthLevel.objects.create(
-                level="none", user=self.abstract_chest.created_by, enabled=False)
-        elif self.kra is None:
-            AuthLevel.objects.create(
-                level="banking1", user=self.abstract_chest.created_by, enabled=False)
-        elif self.utility is None:
-            AuthLevel.objects.create(
-                level="banking2", user=self.abstract_chest.created_by, enabled=False)
-        else:
-            AuthLevel.objects.create(
-                level="banking3", user=self.abstract_chest.created_by, enabled=False)
+        level = 0
+        max_ = False
+        if self.bnk_id is not None:
+            level = 1
+        if self.kra is not None:
+            level = 2
+        if self.utility is not None:
+            level = 3
+            max_ = True
+        AuthLevel.objects.update_or_create(
+            app='banking', user=self.abstract_chest.created_by,
+            defaults={'level': level, 'max': max_} 
+        )
+        return level
     
     def __str__(self):
         return self.abstract_chest.chest_name
@@ -254,6 +276,8 @@ class Validator(models.Model):
     validator  = models.CharField(max_length=256, null=True, blank=True)
     pattern    = models.CharField(max_length=256, null=True, blank=True)
     identifier = models.CharField(max_length=256, blank=True, null=True)
+    # The auth for validators is a binary: 0 for nothing | 1 for everything
+    auth       = models.BooleanField(verbose_name="Allow auth for this validator", default=False)
 
     def __str__(self) -> str:
         return self.name
