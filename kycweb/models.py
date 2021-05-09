@@ -136,6 +136,8 @@ class Corporation(models.Model):
     key = models.CharField(max_length=14, blank=True, null=True)
     name = models.CharField(max_length=100, blank=False)
     chest = models.ForeignKey(Chest, on_delete=models.CASCADE, blank=True, null=True, default=None)
+    # This enabled value is in reference to the corporations key specifically
+    enabled = models.BooleanField(default=True, verbose_name="company_key_enabled")
 
     def save(self, *args, **kwargs):
         ltrs = string.ascii_lowercase
@@ -144,6 +146,33 @@ class Corporation(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+'''
+A registry for all the hosts allowed to
+use a corporations key
+'''
+class HostRegistry(models.Model):
+    host = models.CharField(max_length=500, blank=True, null=True)
+    corp = models.ForeignKey(Corporation, on_delete=CASCADE)
+
+    def __str__(self) -> str:
+        return "{0} for {1}".format(self.host, self.corp.name)
+
+'''
+A method for tracking key uses is necessary
+to ensure that:
+    1. The key isn't compromised (you can search through the hosts)
+    2. The key is valid at the point of use: insertion into a tracker
+        model forces the view to look into the key before every access
+This model stores all key uses for corporations keys
+'''
+class CorpKeyUses(models.Model):
+    host = models.ForeignKey(HostRegistry, on_delete=CASCADE)
+    tstmp = models.DateTimeField(auto_now_add=True) #access timestamp
+    complete = models.BooleanField(default=False)
+
+    def __str__(self) -> str:
+        return "{0}'s Key uses".format(self.host.corp.name)
 
 '''
 Auth level for users of the system. Depending on the auth level
@@ -180,7 +209,7 @@ class HitsRegistry(models.Model):
     # and the chest
     usr = models.ForeignKey(Usr, blank=True, null=True, on_delete=models.SET_NULL)
     chest = models.ForeignKey(Chest, on_delete=models.CASCADE)
-    corporation = models.ForeignKey(Corporation, blank=True, on_delete=models.CASCADE)
+    corporation = models.ForeignKey(Corporation, blank=True, null=True, on_delete=models.CASCADE)
     tstmp = models.DateTimeField(auto_now_add=True) #access timestamp
 
 '''
@@ -200,6 +229,12 @@ class ChestRegistry(models.Model):
     # could also be seen as a block functionality, certain applications
     # can explicitly be banned from using certain chests
     access = models.BooleanField(verbose_name="user access", default=False)
+
+    def __str__(self) -> str:
+        if self.usr is None:
+            return "{0}'s permissions for {1}'s {2}".format(self.corporation, self.chest.created_by.def_usr.username, self.chest.chest_name)
+        else:
+            return "{0}'s permissions for {1}'s {2}".format(self.usr, self.chest.created_by.def_usr.username, self.chest.chest_name)
 
 '''
 a generic chest type that is specifically meant for storing

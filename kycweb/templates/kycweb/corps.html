@@ -1,0 +1,73 @@
+<style>
+.search {
+    margin-left: 20%;
+    margin-top: 20%;
+    transition: 70ms;
+}
+
+.form-outline {
+    width: 80%
+}
+
+.returns{
+    overflow: scroll;
+}
+
+input {
+    background-image: linear-gradient(to top, #9c27b0 2px, 
+                                    rgba(156, 39, 176, 0) 2px), 
+                                    linear-gradient(to top, #262525 1px, 
+                                                    rgba(210, 210, 210, 0) 1px) 
+                                    !important;
+}
+
+</style>
+
+<div class="container-fluid">
+    {% csrf_token %}
+    <div class="row search">
+        <div class="col-md-10">
+            <div class="input-group">
+                <div class="form-outline">
+                    <label class="form-label" for="form1">Search</label>
+                    <input id="search-input" type="search" id="form1" class="form-control" oninput="search('search', this)"/>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="returns">
+
+    </div>
+
+</div>
+
+<script>
+$(document).ready( function() {
+    $("input").focusin(function(){
+        $(".search").css("margin-top", "-5%");
+    });
+    $("input").focusout(function(){
+        $(".search").css("margin-top", "-5%");
+    })
+});
+
+function search(string, search_term){
+    st = search_term.value
+    if(st.length < 1){
+        return;
+    } else {
+        $.post("companies/search/", {"csrfmiddlewaretoken": "{{csrf_token}}", "st": st},
+        function(data){
+            if(data == null || data.length < 1){
+                console.log("No data");
+            } else {
+                $(".returns").html(data);
+                $(".search").css("margin-top", "5%");
+            }
+        });
+    }
+}
+
+window.search = search;
+</script>

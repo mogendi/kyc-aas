@@ -1,0 +1,66 @@
+<style>
+    .chest {
+        border: 3px solid #f44336;
+        text-align: center;
+        width: 80% !important;
+        color: #f44336;
+    }
+    .hvi :hover{
+        cursor: pointer;
+    }
+</style>
+{% if len > 0 %}
+    <div class="col-md-4 pull-right">
+        <div class="card">
+            <div class="card-header card-header-primary">
+                <i class="material-icons pull-right border-icn hvi" onclick="close_(this)">close</i>
+                <h4 class="card-title ">Remove this companies permissions</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <tbody class="extern">      
+                            {% for p in perms %}
+                            <tr>
+                                <button onclick="rem_perms('{{ p.id }}')" class="chest">
+                                    {{p.chest.chest_name}}
+                                </button>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% else %}
+<div class="col-md-4 pull-right">
+    <p class="text-info">You have no permissions for this company</p>
+</div>
+{% endif %}
+
+<script>
+    $(document).ready(function(){
+        function rem_perms(pid) {
+            $.post('companies/rem/perm/', {"csrfmiddlewaretoken": "{{csrf_token}}", "perm": pid},
+            function(data){
+                if(data.deleted){
+                    $(".pull-right").html(
+                        "<p class=\"text-info\">Succesfull</p>"
+                    );
+                    setTimeout(function(){
+                        $(".pull-right").remove();
+                    }, 500);
+                }
+            });
+        }
+
+        function close_(el) {
+            $(el).parent().parent().parent().remove();
+        }
+        
+        window.rem_perms = rem_perms;
+        window.close_ = close_;
+    });
+
+</script>

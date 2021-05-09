@@ -87,6 +87,9 @@
                         <div class="ripple-container"></div>
                       </a>
                     </li>
+                    <li class="nav-item">
+                      <p style="padding: 10px 15px; font-weight: 500;">Chest Key: {{ chest.chest_ID }}</p>
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -323,11 +326,12 @@
         function(data){
           if(data.error == null){
             $("#new_perm").val("");
+            $("#cup_err").html();
             $.get("get/indv/perm/" + data.registry, function(data){
                 $(".perm").append(data);
             });
           } else {
-            $("#cup_err").html("Please input a valid ID (12 letters)");
+            $("#cup_err").html(data.error);
             return
           }
         });

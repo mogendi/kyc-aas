@@ -1,0 +1,242 @@
+<style>
+    /* The switch - the box around the slider */
+   .switch {
+     position: relative;
+     display: inline-block;
+     width: 60px;
+     height: 34px;
+   }
+ 
+   .border-icn {
+     border: 3px solid;
+   }
+ 
+   /* Hide default HTML checkbox */
+   .switch input {
+     opacity: 0;
+     width: 0;
+     height: 0;
+   }
+ 
+   /* The slider */
+   .slider {
+     position: absolute;
+     cursor: pointer;
+     top: 0;
+     left: 0;
+     right: 0;
+     bottom: 0;
+     background-color: #ccc;
+     -webkit-transition: .4s;
+     transition: .4s;
+   }
+ 
+   .slider:before {
+     position: absolute;
+     content: "";
+     height: 26px;
+     width: 26px;
+     left: 4px;
+     bottom: 4px;
+     background-color: white;
+     -webkit-transition: .4s;
+     transition: .4s;
+   }
+ 
+   input:checked + .slider {
+     background-color: #2196F3;
+   }
+ 
+   input:focus + .slider {
+     box-shadow: 0 0 1px #2196F3;
+   }
+ 
+   input:checked + .slider:before {
+     -webkit-transform: translateX(26px);
+     -ms-transform: translateX(26px);
+     transform: translateX(26px);
+   }
+ 
+   /* Rounded sliders */
+   .slider.round {
+     border-radius: 34px;
+   }
+ 
+   .slider.round:before {
+     border-radius: 50%;
+   } 
+ </style>
+
+{% csrf_token %}
+<div class="container-fluid">
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header card-header-primary">
+                    <h4 class="card-title">Hosts</h4>
+                    <p class="card-category">All the registered hosts that can use this companys key</p>
+                </div>
+                <div class="card-body">
+                    <!--Form for creating new allowed hosts-->
+                    <div class="form-group bmd-form-group">
+                      <label class="bmd-label-floating">Host name(url/ip-address)</label>
+                      <input type="text" aria-label="new_host" id="new_host" class="form-control">
+                      <button id="new_host_s" class="btn btn-primary pull-right" onclick="new_host()">Allow Host</button>
+                      <p id="hn_err" class="text-danger" style="font-weight: 800;"></p>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead class=" text-primary"><tr><th>Host Name</th></tr></thead>
+                            <tbody class="extern hosts">
+                                {% for h in hosts %}
+                                <tr>
+                                    <td>{{ h.host }}</td>
+                                    <td class="td-actions text-right">
+                                        <button type="button" rel="tooltip" title="" class="btn btn-danger btn-link btn-sm" hid={{h.id}}
+                                                data-original-title="Remove" aria-describedby="tooltip641266" onclick="delete_host('host', this)">
+                                          <i class="material-icons border-icn">close</i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header card-header-primary">
+                    <h4>{{ corp.name }}'s key: {{ corp.key }}</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-danger" style="font-weight: 900;"> Disabling this key will disable all apps using it.</p>
+                    <div class="row">
+                        <p class="text-info" style="padding: 5%; padding-top: 1.5%; ">Disable key:</p>
+                        <label class="switch">
+                            <input type="checkbox"
+                                  onclick="disable_key()"
+                                  id="key_revoke"
+                                  {% if corp.enabled %}
+                                  checked >
+                                  {% else %}
+                                  >
+                                  {% endif %}
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header card-header-primary">
+                    <h4>Accesses</h4>
+                    <p>Recent Accesses using key</p>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <p class="text-info" style="padding: 5%; padding-top: 1.5%; ">Show unregistered hosts:</p>
+                        <label class="switch">
+                            <input type="checkbox"
+                                    onclick="toggle_hosts()"
+                                    id="toggle_hosts">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead class="text-primary"><th>Host</th><th>Access Time</th></thead>
+                            <tbody class="extern toggle_uses">
+                                {% for a in uses %}
+                                <tr>
+                                    <td>{{ a.host.host }}</td>
+                                    <td>{{ a.tstmp }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    $(document).ready(function() {
+
+        let key = '{{ corp.key }}';
+
+        function disable_key(){
+            $.post('/company/toggle/key/', {'csrfmiddlewaretoken' :'{{csrf_token}}', 'key': key},
+            function(data) {
+                if(!data.toggled){
+                    console.log(err);
+                } else {
+                    console.log('toggled');
+                }
+            });
+        }
+
+        function new_host() {
+            let hn = $("#new_host").val(); // host name
+            $.post('/company/new/host/', {'csrfmiddlewaretoken' :'{{csrf_token}}', 'hn': hn, 'key': key},
+            function(data) {
+                if(data.err){
+                    $("#hn_err").html(data.txt);
+                } else {
+                    $("#hn_err").html();
+                    $(".hosts").append(data);
+                }
+            });
+        }
+
+        function delete_host(string, el) {
+            let hid = $(el).attr("hid");
+            $.post('/company/remove/host/', {'csrfmiddlewaretoken' :'{{csrf_token}}', 'hid': hid},
+            function(data) {
+                if(data.deleted){
+                    $(el).parent().parent().remove();
+                }
+            });
+        }
+
+        function toggle_hosts(){
+            let checked = $("#toggle_hosts").is(":checked")
+            if(checked){
+                $.post('/company/toggle/uses/', {'csrfmiddlewaretoken' :'{{csrf_token}}', 'key': key, 'val': checked},
+                function(data) {
+                    if(data.err){
+
+                    }else {
+                        $(".toggle_uses").html(data);
+                    }
+                });
+            } else {
+                $.post('/company/toggle/uses/', {'csrfmiddlewaretoken' :'{{csrf_token}}', 'key': key, 'val': checked},
+                function(data) {
+                    if(data.err){
+                        
+                    }else {
+                        $(".toggle_uses").html(data);
+                    }
+                });
+            }
+        }
+
+        window.toggle_hosts = toggle_hosts;
+        window.disable_key = disable_key;
+        window.new_host = new_host;
+        window.delete_host = delete_host; 
+    });
+</script>

@@ -1,99 +1,163 @@
 <div class="container-fluid">
+    {% csrf_token %}
     <div class="row">
-        <div class="col-lg-3 col-md-6 col-sm-6">
-          <div class="card card-stats">
-            <div class="card-header card-header-warning card-header-icon">
-              <div class="card-icon">
-                <i class="material-icons">content_copy</i>
-              </div>
-              <p class="card-category">Used Space</p>
-              <h3 class="card-title">{{ size }} / {{ lim }}
-                <small>MB</small>
-              </h3>
-            </div>
-            <div class="card-footer">
-            {% if dng is True %}
-              <div class="stats">
-                <i class="material-icons text-danger">warning</i>
-                <a href="javascript:;">Get More Space.</a>
-              </div>
-            {% else %}
-              <div class="stats">
-                <i class="material-icons">thumb_up</i>
-                <a href="javascript:;">Theres space available.</a>
-              </div>
-            {% endif %}
-            </div>
-          </div>
-        </div>
 
-        <div class="col-lg-3 col-md-6 col-sm-6">
-          <div class="card card-stats">
-            <div class="card-header card-header-success card-header-icon">
-              <div class="card-icon">
-                <i class="material-icons">lock_open</i>
+      <div class="col-md-7">
+          <div class="card">
+              <div class="col-md">
+                  <div class="card">
+                    <div class="card-header card-header-primary">
+                      <h4 class="card-title ">Chests</h4>
+                      {% if n_chests > 0 %}
+                      <p class="card-category"> Here are all your chests! </p>
+                      {% else %}
+                      <p class="card-category"> There is nothing here YET! </p>
+                      {% endif %}
+                    </div>
+                    <div class="card-body">
+                        {% if n_chests > 0 %}
+                        <div class="table-responsive">
+                          <table class="table">
+                            <thead class=" text-primary">
+                              <tr><th>ID</th><th>Name</th><th>Size</th><th>Delete</th></tr>
+                            </thead>
+                            <tbody>
+                              {% for c in chests %}
+                              <tr>
+                                <td><a href="#" class="refid" id="{{c.chest_ID}}">{{c.chest_ID}}</a></td>
+                                <td>{{c.chest_name}}</td>
+                                <td class="text-primary">{{c.chest_size}}</td>
+                                <td><a href="{% url 'delete_chest' c.chest_ID %}"><i class="material-icons">delete</i></a></td>
+                              </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                        {% else %}
+                        <div id="typography">
+                          <div class="card-title">
+                            <h2>You have no chests YET.</h2>
+                          </div>
+                          {% endif %}
+                          <div class="row" style="padding-left: 1.5%;">
+                              <h6>Create a new chest <a href="#" id="new-chest">here</a> </h6>
+                          </div>
+                        </div>
+                    </div>
+                  </div>
               </div>
-              <p class="card-category">Total chest hits</p>
-              <h3 class="card-title">{{ n_hits }}</h3>
-            </div>
-            <div class="card-footer">
-              <div class="stats">
-                <i class="material-icons">date_range</i> Since sign up
-              </div>
-            </div>
           </div>
-        </div>
 
+      <div class="col-md-4">
+          <div class="row">
+
+            <div class="card card-stats">
+              <div class="card-header card-header-success card-header-icon">
+                <div class="card-icon">
+                  <i class="material-icons">lock_open</i>
+                </div>
+                <p class="card-category">Total chest hits</p>
+                <h3 class="card-title">{{ n_hits }}</h3>
+              </div>
+              <div class="card-footer">
+                <div class="stats">
+                  <i class="material-icons">date_range</i> Since sign up
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="row">
+
+            <div class="card">
+              <div class="card-header card-header-primary">
+                <h4>Your Recent Chest Hits</h4>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table">
+                    <thead class="text-primary"><th>name</th><th>chest</th><th>access time</th></thead>
+                    <tbody class="extern">
+                      {% for u in hits %}
+                      <tr>
+                        {% if u.usr is None %}
+                          <td>{{ u.corporation.name }}</td>
+                        {% endif %}
+                        {% if u.usr is not None %}
+                          <td>{{ u.usr.def_usr.username }}</td>
+                        {% endif %}
+                        <td>{{ u.chest }}</td>
+                        <td>{{ u.tstmp }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+      </div>
+
+    </div>
     </div>
 
     <div class="row">
-
-        <div class="col-md-8">
-            <div class="card">
-                <div class="col-md">
-                    <div class="card">
-                      <div class="card-header card-header-primary">
-                        <h4 class="card-title ">Chests</h4>
-                        {% if n_chests > 0 %}
-                        <p class="card-category"> Here are all your chests! </p>
-                        {% else %}
-                        <p class="card-category"> There is nothing here YET! </p>
-                        {% endif %}
-                      </div>
-                      <div class="card-body">
-                          {% if n_chests > 0 %}
-                          <div class="table-responsive">
-                            <table class="table">
-                              <thead class=" text-primary">
-                                <tr><th>ID</th><th>Name</th><th>Size</th><th>Delete</th></tr></thead>
-                              <tbody>
-                                {% for c in chests %}
-                                <tr>
-                                  <td><a href="#" class="refid" id="{{c.chest_ID}}">{{c.chest_ID}}</a></td>
-                                  <td>{{c.chest_name}}</td>
-                                  <td class="text-primary">{{c.chest_size}}</td>
-                                  <td><a href="{% url 'delete_chest' c.chest_ID %}"><i class="material-icons">delete</i></a></td>
-                                </tr>
-                                {% endfor %}
-                              </tbody>
-                            </table>
-                          </div>
-                          {% else %}
-                          <div id="typography">
-                            <div class="card-title">
-                              <h2>You have no chests YET.</h2>
-                            </div>
-                            {% endif %}
-                            <div class="row" style="padding-left: 1.5%;">
-                                <h6>Create a new chest <a href="#" id="new-chest">here</a> </h6>
-                            </div>
-                          </div>
+      <div class="col-md-7">
+        <div class="card">
+            <div class="col-md">
+                <div class="card">
+                  <div class="card-header card-header-primary">
+                    <h4 class="card-title">Open Other Chests</h4>
+                    <p class="card-category"> You can open other chests if you have the key</p>
+                  </div>
+                  <div class="card-body">
+                    <div class="form-group bmd-form-group">
+                      <label class="bmd-label-floating">The Chest Key</label>
+                      <input type="text" aria-label="ID" id="open_chest" class="form-control">
+                      <button id="new_perm_s" class="btn btn-primary pull-right" onclick="open_chest()">Open Chest</button>
+                      <p id="cup_err" class="text-danger"></p>
+                    </div>
+                    <div class="col-md-8" id="search_field" hidden>
+                      <div class="form-group bmd-form-group">
+                        <label class="bmd-label-floating">Search Chest</label>
+                        <input type="text" aria-label="ID" id="file_search" class="form-control" oninput="search_chest()">
+                        <p id="cup_err" class="text-danger"></p>
                       </div>
                     </div>
+                    <!--Insertion point for chest content-->
+                    <div class="table-responsive">
+                      <table class="table">
+                        <tbody class="extern files">
+
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-            </div>
+                </div>
+              </div>
         </div>
-        
+      </div>
+
+      <div class="col-md-4">
+
+        <div class="card card-stats">
+          <div class="card-header card-header-primary">
+            <h4>Recent Chest Opens</h4>
+          </div>
+          <div class="card-body">
+            {% for r in recents %}
+            {% if r is not None %}
+            <div class="row" style="padding-left: 10%;">
+              <P>{{ r.chest.created_by.def_usr.username }}'s&nbsp;&nbsp;&nbsp;&nbsp;</P><a href="#" onclick="event.preventDefault(); open_chest_direct('{{ r.chest.chest_ID }}')">{{ r.chest.chest_name }}</a>
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
     </div>
 
 </div>
@@ -115,5 +179,61 @@
               });
           }
       );
+
+      function open_chest(){
+        var chest = $("#open_chest").val()
+        if(chest == null || chest.length != 12){
+          $("#open_chest").css("border-left", "3px solid #f6665b");
+          $("#cup_err").html("Enter a valid chest id");
+        } else{
+          $("#open_chest").css("border-left", "none");
+          $("#cup_err").html("");
+          $.post("open/chest/", {"csrfmiddlewaretoken": "{{csrf_token}}", "chest": chest},
+          function(data){
+            $("#search_field").removeAttr("hidden");
+            $(".files").html(data);
+          });
+        }
+      }
+
+      function open_chest_direct(chest){
+        $("#open_chest").val(chest);
+        if(chest == null || chest.length != 12){
+          $("#open_chest").css("border-left", "3px solid #f6665b");
+          $("#cup_err").html("Enter a valid chest id");
+        } else{
+          $("#open_chest").css("border-left", "none");
+          $("#cup_err").html("");
+          $.post("open/chest/", {"csrfmiddlewaretoken": "{{csrf_token}}", "chest": chest},
+          function(data){
+            $(".files").html(data);
+            window.scrollTo({
+              top: 400,
+              left: 0,
+              behavior: 'smooth'
+            });
+            $("#search_field").removeAttr("hidden");
+          });
+        }
+      }
+
+      function search_chest(){
+        let chest = $("#open_chest").val();
+        let query = $("#file_search").val();
+        console.log(chest);
+        $.post("search/chest/", {"csrfmiddlewaretoken": "{{csrf_token}}", "chest": chest, "query": query},
+        function(data){
+          $(".files").html(data);
+            window.scrollTo({
+              top: 600,
+              left: 0,
+              behavior: 'smooth'
+            });
+        });
+      }
+
+      window.open_chest = open_chest;
+      window.open_chest_direct = open_chest_direct;
+      window.search_chest = search_chest;
   });
 </script>

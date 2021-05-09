@@ -127,7 +127,7 @@
               <div class="col-md-10">
                 <div class="form-group bmd-form-group">
                   <p>Select what the chest is for</p>
-                  <select id="chest-types" name="chest-types" class="form-control">
+                  <select id="chest-type" name="chest-type" class="form-control">
                     <option value="bnk">Banking</option>
                     <option value="wrk">Work</option>
                     <option value="prs">Personal</option>
@@ -199,7 +199,7 @@
       var x, y, i, valid = true;
       if(currentTab==0){
         x = document.getElementsByClassName("tab");
-        y = x[currentTab].getElementsByTagName("select")[0];
+        y = document.getElementById("chest-types");
         switch(y.value){
           case "bnk":
             jump_to = 1;
@@ -236,11 +236,12 @@
             valid = false; 
           }
         }
+        valid = true;
       }
       if(jump_to==1 && currentTab>0){
         var id = document.getElementById("userid");
         var kra = document.getElementById("userkra");
-        var pp = document.getElementById("userutil");
+        var pp = document.getElementById("userpp");
         document.getElementById("regForm").action = "{% url 'new_banking_auth' %}";
         if(id.files.length == 0 || kra.files.length == 0 || pp.files.length == 0) {
           document.getElementById("error-field").innerText = "Please fill out the entire form";

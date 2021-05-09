@@ -1,18 +1,22 @@
 from json.encoder import JSONEncoder
+from django import views
 from django.http import request
 from django.http.response import Http404
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
-from face_recognition.api import face_locations
+from face_recognition.api import face_encodings, face_locations
 from .forms import UserForm, UsrForm, FileForm
-from .models import BankingChestType, ChestRegistry, Chest, Corporation, Usr, FileInstances, HitsRegistry, WorkChestType, Validator
+from .models import ( BankingChestType, ChestRegistry, Chest, Corporation, 
+                      Usr, FileInstances, HitsRegistry, WorkChestType, 
+                      Validator, HostRegistry, CorpKeyUses )
 from django.views import generic
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, JsonResponse
 from django.core.files.storage import FileSystemStorage
-import pathlib, os, sys, pytesseract, pdf2image, PIL, io, numpy, re, requests, json, Levenshtein as lev, datetime, face_recognition
+import pathlib, os, sys, pytesseract, pdf2image, PIL, io, numpy, re, requests, json, Levenshtein as lev, datetime, face_recognition, cv2
 from PIL import ImageEnhance, ImageOps
 from django.conf import settings
+from django.db.models import Q
 
 LIMIT = 100000000
 
@@ -65,32 +69,98 @@ chests they've created and links that they can create
 def home(r):
     return render(r, 'kycweb/dash.html')
 
+class GeneralChests():
 
-'''
-Loads chest data & information and renders chests UI
-'''
-@login_required
-def chests(r):
-    n_chests = n_hits = n_size = 0
-    dng = False
-    usr = Usr.objects.get(def_usr=r.user.id)
-    chests = Chest.objects.filter(created_by=usr.id)
-    n_hits = HitsRegistry.objects.filter(usr__id=r.user.id).count()
-    n_chests = chests.count()
-    if n_chests>0:
-        for i in chests:
-            n_size += int(i.chest_size)/1000000
-    else:
-        n_size = n_size
-    if (n_size/LIMIT)*100 <= 5 and (n_size/LIMIT)*100 > 0 and n_size>1:
-        dng = True
-    return render(r, 'kycweb/chests.html', {'chests':chests, 
-                                          'n_chests':n_chests, 
-                                          'size':n_size, 
-                                          'lim':LIMIT/1000000,
-                                          'dng': dng,
-                                          'n_hits': n_hits
-                                          })
+    def remove_dups(l):
+        non_dup = []
+        dup = False
+        for i in l:
+            for j in non_dup:
+                if i.usr.id == j.usr.id and i.chest.id == j.chest.id:
+                    dup = True
+            if not dup:
+                non_dup.append(i)
+            else:
+                dup = False
+        return non_dup[:5]
+
+    '''
+    Loads chest data & information and renders chests UI
+    '''
+    @login_required
+    def chests(r):
+        n_chests = n_hits = n_size = 0
+        dng = False
+        usr = Usr.objects.get(def_usr=r.user.id)
+        chests = Chest.objects.filter(created_by=usr.id)
+        hits = HitsRegistry.objects.filter(chest__created_by__def_usr__id=r.user.id)
+        n_hits = hits.count()
+        n_chests = chests.count()
+        recent_opens = HitsRegistry.objects.filter(usr=usr)
+        if n_chests>0:
+            for i in chests:
+                n_size += int(i.chest_size)/1000000
+        else:
+            n_size = n_size
+        if (n_size/LIMIT)*100 <= 5 and (n_size/LIMIT)*100 > 0 and n_size>1:
+            dng = True
+        return render(r, 'kycweb/chests.html', {'chests':chests, 
+                                            'n_chests':n_chests, 
+                                            'size':n_size, 
+                                            'lim':LIMIT/1000000,
+                                            'dng': dng,
+                                            'n_hits': n_hits,
+                                            'recents': GeneralChests.remove_dups(recent_opens),
+                                            'hits': hits[:3]
+                                            })
+
+    def open_chest(r):
+        chest = Chest.objects.get(chest_ID=r.POST.get("chest"))
+        auth = usr = None
+        try:
+            usr = Usr.objects.get(def_usr=r.user.id)
+            try:
+                auth = ChestRegistry.objects.get(chest=chest, usr=usr)
+            except:
+                return HttpResponse("You're not authenticated for this chest")
+        except:
+            return HttpResponse("You're not authenticated for this chest")
+
+        if not auth.access:
+            return HttpResponse("You're not authenticated for this chest")
+
+        if chest is None:
+            return HttpResponse("The chest key is invalid")
+        files = FileInstances.objects.filter(chest=chest)
+        HitsRegistry.objects.create(usr=usr, chest=chest)
+
+        ctx = {
+            "files": files,
+            "user": False,
+            "chest": chest
+        }
+        return render(r, "kycweb/files.html", ctx)
+
+    def search_chest(r):
+        chest = None
+        try:
+            chest = Chest.objects.get(chest_ID=r.POST.get("chest"))
+        except:
+            return JsonResponse({"error": "Error searching, please reload page"})
+
+        query = r.POST.get("query")
+
+        files = FileInstances.objects.filter(chest=chest, upload_path__contains=query)
+
+        ctx = {
+            'files': files,
+            'user': False,
+            'chest': chest
+        }
+
+        return render(r, "kycweb/files.html", ctx)
+
+
 # single chest instance view
 @login_required
 def chest(r):
@@ -140,12 +210,19 @@ def file_contents(f):
     f.seek(0)
     fc = f.read()
     ft = file_type(pathlib.Path(f.name).suffix)
+    imgs = []
     if ft == "document":
         pages = pdf2image.convert_from_bytes(fc)
         for pg in pages:
-            pg = pg.convert('RGBA')
-            dt = numpy.array(pg)
-            dt = PIL.Image.fromarray(dt)
+            pg = pg.convert('RGB')
+            dt  = numpy.array(pg)
+            imgs.append(dt)
+    if ft == "image":
+        img = PIL.Image.open(io.BytesIO(fc))
+        img = img.convert('RGB')
+        img = numpy.array(img)
+        imgs.append(img)
+    return imgs
 
 '''
 Extract an RE pattern from image if it can
@@ -297,24 +374,19 @@ Checks passport photos relative to the id_pic
 decides validity based on distance
 '''
 def check_pic(r):
-    id = r.FILES.get("userid")
-    pic = r.FILES.get("pic")
-    id.seek(0)
-    pic.seek(0)
-    img1 = PIL.Image.open(io.BytesIO(id.read()))
-    img1 = img1.convert('RGBA')
-    img2 = PIL.Image.open(io.BytesIO(pic.read()))
-    img2 = img2.convert('RGBA')
-    locs1 = face_recognition.face_locations(img1)
-    locs2 = face_recognition.face_locations(img2)
-    encs1 = face_recognition.face_encodings(img1, locs1)
-    encs2 = face_recognition.face_encodings(img2, locs2)
-
-    for enc in encs1:
-        dis = face_recognition.face_distance(encs2, enc)
-        print(dis)
-
-    return HttpResponse("Hello")
+    ids = file_contents(r.FILES.get("userid"))
+    pps = file_contents(r.FILES.get("pic"))
+    loc_pp = face_locations(pps[0])
+    print(ids[0])
+    for id in ids:
+        loc = face_locations(id)
+        enc = face_encodings(id, loc)
+        pp = face_encodings(pps[0], loc_pp)
+        print(loc)
+        ds = face_recognition.face_distance(enc, pp)
+        print(ds)
+    ctx = {"verified": True}
+    return JsonResponse(ctx)
     
 '''
 All file manipulation semantics
@@ -373,6 +445,7 @@ class ChestCreateView(LoginRequiredMixin, generic.View):
 
     def post(self, r):
         chest_type = r.POST.get('chest-types')
+        print(chest_type)
         if chest_type == "oth":
             usr = Usr.objects.get(def_usr=r.user.id)
             chest = Chest.objects.create(chest_name=r.POST.get('chest-name'), chest_size=0, created_by=usr)
@@ -380,9 +453,9 @@ class ChestCreateView(LoginRequiredMixin, generic.View):
             for i in range(0, nfls):
                 new_file(chest, r)
         if chest_type is "bnk":
-            requests.post("new_chest/bnk/", data=r)
-        if chest_type is "bnk":
-            requests.post("new_chest/wrk/", data=r)
+            return requests.post("new_chest/bnk/", data=r)
+        if chest_type is "wrk":
+            return requests.post("new_chest/wrk/", data=r)
         return redirect("/")
 
 '''
@@ -418,7 +491,8 @@ class ChestView(LoginRequiredMixin, generic.View):
     def extend_chest(r):
         chest = Chest.objects.get(pk=r.POST.get("chest"))
         ctx = {
-            "files": new_file(chest, r)
+            "files": new_file(chest, r),
+            "user": True
         }
         return render(r, "kycweb/files.html" ,ctx)
 
@@ -457,23 +531,32 @@ class ChestView(LoginRequiredMixin, generic.View):
             c = Corporation.objects.get(key=uid)
         except:
             print("Not a corporation")
-        ch = Chest.objects.get(chest_ID=r.POST.get('chest'))
-        if ch is not None:
-            if u is not None and c is None:
-                cr = ChestRegistry.objects.create(usr=u, chest=ch, access=True)
-                ctx = {"registry":cr.id}
-                return JsonResponse(ctx)
-            elif u is None and c is not None:
-                cr = ChestRegistry.objects.create(corporation=c, chest=ch, access=True)
-                ctx = {"registry":cr.id}
-                return JsonResponse(ctx)
-            elif u is not None and c is not None:
-                ctx = {"error": "There was an issue creating this permission"}
-                return JsonResponse(ctx)
-            else:
-                ctx = {"error": "This user/corporation does not exist"}
-                return JsonResponse(ctx)
-        else:
+        try:
+            ch = Chest.objects.get(chest_ID=r.POST.get('chest'))
+            if ch is not None:
+                if u is not None and c is None:
+                    try:
+                        ChestRegistry.objects.get(usr=u, chest=ch)
+                        return JsonResponse({"error": "This user already has permissions"})
+                    except:
+                        cr = ChestRegistry.objects.create(usr=u, chest=ch, access=True)
+                        ctx = {"registry":cr.id}
+                        return JsonResponse(ctx)
+                elif u is None and c is not None:
+                    try:
+                        ChestRegistry.objects.get(corporation=c, chest=ch)
+                        return JsonResponse({"error": "This corporation already has permissions"})
+                    except:
+                        cr = ChestRegistry.objects.create(corporation=c, chest=ch, access=True)
+                        ctx = {"registry":cr.id}
+                        return JsonResponse(ctx)
+                elif u is not None and c is not None:
+                    ctx = {"error": "There was an issue creating this permission"}
+                    return JsonResponse(ctx)
+                else:
+                    ctx = {"error": "This user/corporation does not exist"}
+                    return JsonResponse(ctx)
+        except:
             ctx = {"error": "The was an issues processing this request"}
 
 '''
@@ -497,12 +580,14 @@ class BankingChestCreateView(LoginRequiredMixin, generic.View):
             bnk_id = new_file(chest, r, "userid")
             bnk_kra = new_file(chest, r, "userkra")
             bnk_util = new_file(chest, r, "userutil")
+            usr_pp = new_file(chest, r, "userpp")
             usr.addr      = r.POST.get("uaddress"), 
             usr.bdate     = r.POST.get("bd"), 
             usr.full_name =r.POST.get("uname").upper()
+            usr.profile_pic = usr_pp.upload_path
             usr.save()
             b = BankingChestType.objects.create(
-                abstract_chest=chest, bnk_id=bnk_id, kra=bnk_kra, utility=bnk_util)
+                abstract_chest=chest, bnk_id=bnk_id, kra=bnk_kra, utility=usr_pp)
             b.gen_auth_level()
             return redirect("/")
 
@@ -637,4 +722,231 @@ class ValidatorCreateView(generic.View):
         )
 
 '''
+User facing company ops grouping
 '''
+class GeneralCompany(generic.View, LoginRequiredMixin):
+
+    login_url = "login/"
+
+    def get(self, r):
+        return render(r, "kycweb/corps.html")
+
+    @login_required
+    def search(r):
+        st = r.POST.get("st") # search term
+        cmps = Corporation.objects.filter(name__startswith = st) #comapnies
+        len = cmps.count()
+        ctx = {
+            "cmps": cmps,
+            "len": len
+        }
+        return render(r, "kycweb/corp.html", ctx)
+
+    '''
+    Add Permissions to specific chests 
+    '''
+    # renders the template for the addition request
+    def add_perm_get(r):
+        usr = Usr.objects.get(def_usr=r.user.id)
+        chests_nf = Chest.objects.filter(created_by=usr)
+        cmp = None
+        try:
+            cmp = Corporation.objects.get(key=r.GET.get("key"))
+        except:
+            cmp = None
+        if cmp is not None:
+            perms = ChestRegistry.objects.filter(corporation=cmp, chest__created_by=usr)
+            if perms.count() > 0:
+                chests = []
+                for p in perms:
+                    for c in chests_nf:
+                        if p.chest.chest_ID == c.chest_ID:
+                            pass
+                        else:
+                            chests.append(c)
+            else:
+                chests = chests_nf
+        print(chests)
+        len_ = len(chests)
+        ctx = {
+            "chests": chests,
+            "len": len_,
+            "cmp": cmp
+        }
+
+        return render(r, "kycweb/corp_add_perm.html", ctx)
+
+    # actually add the perm on request
+    def add_perm(r):
+        usr = Usr.objects.get(def_usr=r.user.id)
+        chests = corp = None
+        try:
+            chests = Chest.objects.get(chest_ID=r.POST.get("chest"))
+        except:
+            return JsonResponse({"error": "No such chest"})
+        try:
+            corp = Corporation.objects.get(key=r.POST.get("corp"))
+        except:
+            return JsonResponse({"error": "No such company"})
+
+        ChestRegistry.objects.create(chest=chests, corporation=corp)
+        return JsonResponse({"created": True})
+
+    # render the view for removing company perm
+    def rem_perm_get(r):
+        usr = Usr.objects.get(def_usr=r.user.id)
+        cmp = Corporation.objects.get(key=r.GET.get("cmp"))
+        perms = ChestRegistry.objects.filter(corporation=cmp, chest__created_by=usr)
+        len = perms.count()
+        ctx = {
+            "perms": perms,
+            "len": len,
+        }
+
+        return render(r, "kycweb/corp_rem_perm.html", ctx)
+
+    # actually remove the perm
+    def rem_perm(r):
+        perm = None
+        pid = r.POST.get("perm")
+        try:
+            perm = ChestRegistry.objects.get(pk=pid)
+        except:
+            return JsonResponse({"deleted": True})
+
+        perm.delete()
+        return JsonResponse({"deleted": True})
+
+    # remove all permissions for a corporation
+    def rem_perm_all(r):
+        cmp = r.POST.get("cmp")
+        cmp = Corporation.objects.get(key=cmp)
+        usr = Usr.objects.get(def_usr=r.user.id)
+        perms = ChestRegistry.objects.filter(corporation=cmp, chest__created_by=usr)
+
+        for p in perms:
+            p.delete()
+
+        return JsonResponse({"deleted": True})
+
+
+'''
+Non-user facing company ops grouping
+for verifications/ dashboard
+'''
+class CompanyOperations(generic.View):
+    login_url = 'login/'
+    
+    def get(self, r):
+        corp = r.GET.get("key")
+        if corp is None:
+            return redirect('/companies/dash/open/')
+        return render(r, 'kycweb/corp_dash.html', {'key': corp})
+
+    @login_required
+    def get_form(r):
+        return render(r, 'registration/corp_login.html')
+
+    def post(self, r):
+        corp = r.POST.get("key")
+        name = r.POST.get("name")
+        print(corp, name)
+        try:
+            Corporation.objects.get(key=corp, name=name)
+        except:
+            return JsonResponse({"error": "credentials don't exist"})
+
+        return JsonResponse({"validated": True})
+
+
+    def corp_info(r):
+        corp = None
+        try:
+            corp = Corporation.objects.get(key=r.GET.get("key"))
+        except:
+            return JsonResponse({'key': 'None'})
+        hosts = HostRegistry.objects.filter(corp=corp)
+        key_uses = CorpKeyUses.objects.filter(host__corp=corp)
+
+        ctx = {
+            'corp':  corp,
+            'hosts': hosts,
+            'uses':  key_uses
+        }
+
+        return render(r, 'kycweb/corp_info.html', ctx)
+
+    def toggle_key(r):
+        corp = r.POST.get("key")
+        cp = None
+        try:
+            cp = Corporation.objects.get(key=corp)
+        except:
+            return JsonResponse({'err': 'no such coorp'})
+        
+        if cp.enabled:
+            cp.enabled = False
+        else:
+            cp.enabled = True
+
+        return JsonResponse({'toggled': True})
+
+    def new_host(r):
+        cp = r.POST.get("key")
+        hn = r.POST.get("hn")
+        corp = None
+        if cp is not None and hn is not None:
+            try:
+                corp = Corporation.objects.get(key=cp)
+            except:
+                return JsonResponse({'err': True, 'txt': "Error adding host, please reload page and try again"})
+        
+            # ping the host to check its validity
+            resp = os.system("ping -c 1 " + hn)
+            if resp == 0:
+                nh = HostRegistry.objects.create(host=hn, corp=corp) # new host
+                return render(r, "kycweb/host.html", {"h": nh})
+            else:
+                return JsonResponse({'err': True, 'txt': "Please enter a valid host name"})
+
+        else:
+            return JsonResponse({'err': True, 'txt': "Please enter a valid host name"})
+
+    def rem_host(r):
+        hid = r.POST.get("hid")
+        if hid is not None:
+            host = None
+            try:
+                host = HostRegistry.objects.get(pk=hid)
+            except:
+                return JsonResponse({"deleted": False, "txt": "couldn't find specified host"})
+
+            host.delete()
+            return JsonResponse({"deleted": True})
+
+    def toggle_uses(r):
+        val = r.POST.get('val')
+        corp = Corporation.objects.get(key=r.POST.get('key'))
+        if val == "true":
+            uses = CorpKeyUses.objects.filter(host__corp=corp.id)
+            hosts = HostRegistry.objects.filter(corp=corp.id)
+            nr = []
+            for u in uses:
+                exists = False # if the used host exists in the allowed hosts
+                for h in hosts:
+                    if u.host == h:
+                        exists = True
+                if not exists:
+                    nr.append(u)
+            ctx = {
+                'uses': nr,
+            }
+            return render(r, 'kycweb/uses.html', ctx)
+        else:
+            uses = CorpKeyUses.objects.filter(host__corp=corp.id)
+            
+            ctx = {
+                'uses': uses
+            }
+
+            return render(r, 'kycweb/uses.html', ctx)

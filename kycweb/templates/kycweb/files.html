@@ -1,3 +1,4 @@
+<p id="chest_id" hidden>{{ chest.chest_ID }}</p>
 {% for f in files%}
     <tr>
     <td>{{ f.get_file_name }}</td>
@@ -9,11 +10,13 @@
         </a>
         </button>
     </td>
+    {% if user %}
     <td class="td-actions text-right">
         <button type="button" rel="tooltip" title="" class="btn btn-danger btn-link btn-sm" fid={{f.id}}
                 data-original-title="Remove" aria-describedby="tooltip641266" onclick="delete_file('file', this)">
         <i class="material-icons border-icn">delete</i>
         </button>
     </td>
+    {% endif %}
     </tr>
 {% endfor %}

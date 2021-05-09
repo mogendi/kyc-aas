@@ -1,0 +1,102 @@
+<style>
+    .card {
+        width: 80%;
+        margin-left: 10%;
+    }
+    .txt {
+        margin-left: 40%;
+    }
+    .border-icn {
+        border: 3px solid;
+    }
+    button{
+        margin-left: 10% !important;
+    }
+</style>
+
+{% if len < 1 %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <p class="text-danger txt">Sorry, could't find that company</p>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+    {% for c in cmps %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead class=" text-primary">
+                        <tr><th>Key</th><th>Name</th><th>Add Permission</th><th>Remove permission</th><th>Remove all permissions</th></tr>
+                      </thead>
+                    <tbody class="extern">
+                        <tr>
+                            <td>{{ c.key }}</td>
+                            <td>{{ c.name }}</td>
+                            <td>        
+                                <button type="button" rel="tooltip" title="" class="btn btn-danger btn-link btn-sm" onclick="add_perm('{{ c.key }}')">
+                                    <i class="material-icons border-icn">add</i>
+                                </button>
+                            </td>
+                            <td>        
+                                <button type="button" rel="tooltip" title="" class="btn btn-danger btn-link btn-sm" onclick="rem_perm('{{ c.key }}')">
+                                    <i class="material-icons border-icn">remove</i>
+                                </button>
+                            </td>                          
+                            <td>        
+                                <button type="button" rel="tooltip" title="" class="btn btn-danger btn-link btn-sm" onclick="rem_perm_all('{{ c.key }}')">
+                                    <i class="material-icons border-icn">delete_outline</i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="perms-section" id="perm-{{c.key}}">
+
+    </div>
+    {% endfor %}
+{% endif %}
+
+<script>
+    function add_perm(key){
+        $.get("companies/add/perm/get/", {"csrfmiddlewaretoken": "{{csrf_token}}", "key": key},
+        function(data){
+            console.log(key);
+            $("#perm-" + key).html(data);
+        });
+    }
+
+    function rem_perm(key){
+        $.get("companies/rem/perm/get/", {"csrfmiddlewaretoken": "{{csrf_token}}", "cmp": key},
+        function(data){
+            console.log(key);
+            $("#perm-" + key).html(data);
+        });
+    }
+
+    function rem_perm_all(key){
+        $.post('companies/rem/perm/all/', {"csrfmiddlewaretoken": "{{csrf_token}}", "cmp": key},
+        function(data){
+            if(data.deleted){
+                $("#perm-" + key).html(
+                        "<p class=\"text-info\">Succesfull</p>"
+                );
+                setTimeout(function(){
+                    $("#perm-" + key).html();
+                }, 500);
+            }
+        });
+    }
+    
+    window.add_perm = add_perm;
+    window.rem_perm = rem_perm;
+    window.rem_perm_all = rem_perm_all;
+</script>

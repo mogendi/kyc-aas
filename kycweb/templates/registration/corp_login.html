@@ -1,0 +1,85 @@
+{% extends 'kycweb/base.html' %}
+
+
+{% block nav_block %}
+    <div class="navbar-wrapper">
+        <a class="navbar-brand" href="#">Login</a>
+    </div>
+{% endblock nav_block%}
+
+{% load static %}
+{% block body_block %}
+<style>
+    .container-form{
+        position: relative;
+        min-width: 300px;
+        margin-top: 5%;
+        margin-left: 20%;
+        margin-right: 20%;
+        box-shadow: 0 0.2rem 0.4rem rgba(0,0,0,0.23);
+        padding: 3%;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header card-header-primary">
+                    <h4> Open Dashboard </h4>
+                    <p>Open copmany dashboard</p>
+                </div>
+                <div class="card-body">
+                    <div class="row">    
+                        {% csrf_token %}
+                        <div class="col-md4" style="padding-right: 5%; padding-left: 5%;">
+                            <div class="form-group bmd-form-group">
+                                <label class="bmd-label-floating">Company Name</label>
+                                <input class="form-control" id="name" name="name" type="text"/>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md4" style="padding-right: 5%; padding-left: 5%;">
+                            <div class="form-group bmd-form-group">
+                                <label class="bmd-label-floating">Company Key</label>
+                                <input class="form-control" id="key" name="key" type="text"/>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="login_()">View Dash</button>
+
+                    </div>
+                    <p class="text-danger" id="err" style="font-weight: 900;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+
+<script>
+    $(document).ready(function(){
+
+        function login_(){
+            let key = $("#key").val();
+            let name = $("#name").val();
+            console.log(key, name);
+            $.post('/companies/dash/', {'csrfmiddlewaretoken': '{{ csrf_token }}', 'key': key, 'name': name},
+                function(data) {
+                    console.log(data);
+                    if(data.error){
+                        $("#err").html(data.error);
+                    }
+                    if(data.validated){
+                        window.location.href = '/companies/dash/?key=' + key;
+                    }
+                });
+        }
+
+        window.login_ = login_; 
+    });
+</script>
+
+{% endblock body_block %}
+  

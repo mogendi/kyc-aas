@@ -1,0 +1,80 @@
+<style>
+    .chest {
+        border: 3px solid #f44336;
+        text-align: center;
+        width: 80% !important;
+        color: #f44336;
+    }
+    .hvi :hover{
+        cursor: pointer;
+    }
+</style>
+{% if len > 0 %}
+    <div class="col-md-4 pull-right">
+        <div class="card">
+            <div class="card-header card-header-primary">
+                <i class="material-icons pull-right border-icn hvi" onclick="close_(this)">close</i>
+                <h4 class="card-title ">Choose target chest</h4>
+            </div>
+            {% if cmp is not None %}
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <tbody class="extern">      
+                            {% for c in chests %}
+                            <tr>
+                                <button onclick="add_perms('{{ c.chest_ID }}')" class="chest">
+                                    {{c.chest_name}}
+                                </button>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% else %}
+            <div class="card-body">
+                <p>Error Loading, please reload window</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+{% else %}
+    <div class="col-md-4 pull-right">
+        <p class="text-info">You have no chests that don't already have this permission</p>
+    </div>
+{% endif %}
+
+<script>
+    $(document).ready(function(){
+        function add_perms(cid) {
+            cmp = "{{ cmp.key }}"
+            $.post('companies/add/perm/', {"csrfmiddlewaretoken": "{{csrf_token}}", "corp": cmp, "chest": cid},
+            function(data){
+                if(data.created){
+                    $(".pull-right").html(
+                        "<p class=\"text-info\">Succesfull</p>"
+                    );
+                    setTimeout(function(){
+                        $(".pull-right").remove();
+                    }, 500);
+                } else {
+                    $(".pull-right").html(
+                        "<p class=\"text-danger\">Failed to add permission. Please try again.</p>"
+                    );
+                    setTimeout(function(){
+                        $(".pull-right").remove();
+                    }, 500);
+                }
+            });
+        }
+
+        function close_(el) {
+            $(el).parent().parent().parent().remove();
+        }
+        
+        window.add_perms = add_perms;
+        window.close_ = close_;
+    });
+
+</script>

@@ -30,37 +30,9 @@
         <div class="sidebar-wrapper">
           <ul class="nav">
             <li class="nav-item active">
-              <a class="nav-link" href="#" id="chests">
+              <a class="nav-link" href="#" id="coorp">
                 <i class="material-icons">dashboard</i>
-                <p>Chests</p>
-              </a>
-            </li>
-
-            <li class="nav-item ">
-              <a class="nav-link" href="#" id="company-search">
-                <i class="material-icons">search</i>
-                <p>Company Search</p>
-              </a>
-            </li>
-
-            <li class="nav-item ">
-              <a class="nav-link" href="#" id="profile">
-                <i class="material-icons">person</i>
-                <p>User Profile</p>
-              </a>
-            </li>
-
-            <li class="nav-item ">
-              <a class="nav-link" href="#" id="space-settings">
-                <i class="material-icons">upgrade</i>
-                <p>Upgrade Space</p>
-              </a>
-            </li>
-
-            <li class="nav-item ">
-              <a class="nav-link" href="#" id="settings">
-                <i class="material-icons">settings</i>
-                <p>Settings</p>
+                <p>Company Dashboard</p>
               </a>
             </li>
 
@@ -117,73 +89,23 @@
 <script src="{% static 'kycweb/js/material-dashboard.js?v=2.1.2' %}" type="text/javascript"></script>
 <!-- Material Dashboard DEMO methods, don't include it in your project! -->
 <script src="/demo/demo.js' %} "></script>
+
 <script>
   $(document).ready(function() {
-    $('#chests').click(
+    $('#coorp').click(
       function(){
-        $("#chests").parent().addClass("active");
-        $("#company-search").parent().removeClass("active");
-        $("#profile").parent().removeClass("active");
-        $("#space-settings").parent().removeClass("active");
-        $("#settings").parent().removeClass("active");
-        $.get('chests/', function(data, status){
+        $("#coorp").parent().addClass("active");
+        url = '/companies/info/?key=' + '{{ key }}';
+        console.log('{{ key }}');
+        $.get(url, function(data, status){
+            if(data.key == 'None'){
+              window.location.href = '/companies/dash/open/';
+            }
             $('.content').html(data);
       })
     });
 
-    $('#company-search').click(
-      function(){
-        $("#company-search").parent().addClass("active");
-        $("#chests").parent().removeClass("active");
-        $("#profile").parent().removeClass("active");
-        $("#space-settings").parent().removeClass("active");
-        $("#settings").parent().removeClass("active");
-        var catid = 1;
-        $.get('companies/', function(data, status){
-            $('.content').html(data);
-      })
-    });
-
-    $('#profile').click(
-      function(){
-        $("#profile").parent().addClass("active");
-        $("#chests").parent().removeClass("active");
-        $("#company-search").parent().removeClass("active");
-        $("#space-settings").parent().removeClass("active");
-        $("#settings").parent().removeClass("active");
-        var catid = $(this).attr("classrelated");
-        $.get('/DC/resources/' + catid + '/', function(data, status){
-            $('.card-body').html(data.content);
-      })
-    });
-
-    $('#space-settings').click(
-      function(){
-        $("#space-settings").parent().addClass("active");
-        $("#company-search").parent().removeClass("active");
-        $("#chests").parent().removeClass("active");
-        $("#profile").parent().removeClass("active");
-        $("#settings").parent().removeClass("active");
-        var catid = $(this).attr("classrelated");
-        $.get('/DC/resources/' + catid + '/', function(data, status){
-            $('.card-body').html(data.content);
-      })
-    });
-
-    $('#settings').click(
-      function(){
-        $("#settings").parent().addClass("active");
-        $("#company-search").parent().removeClass("active");
-        $("#chests").parent().removeClass("active");
-        $("#profile").parent().removeClass("active");
-        $("#space-settings").parent().removeClass("active");
-        var catid = $(this).attr("classrelated");
-        $.get('/DC/resources/' + catid + '/', function(data, status){
-            $('.card-body').html(data.content);
-      })
-    });
-
-    $("#chests").trigger('click');
+    $("#coorp").trigger('click');
 
     $().ready(function() {
       $sidebar = $('.sidebar');
