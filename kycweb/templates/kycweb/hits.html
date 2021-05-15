@@ -1,0 +1,26 @@
+<div class="card">
+    <div class="card-header card-header-primary">
+    <h4>All your chest hits</h4>
+    </div>
+    <div class="card-body">
+    <div class="table-responsive">
+        <table class="table">
+        <thead class="text-primary"><th>name</th><th>chest</th><th>access time</th></thead>
+        <tbody class="extern">
+            {% for u in hits %}
+            <tr>
+            {% if u.usr is None %}
+                <td>{{ u.corporation.name }}</td>
+            {% endif %}
+            {% if u.usr is not None %}
+                <td>{{ u.usr.def_usr.username }}</td>
+            {% endif %}
+            <td>{{ u.chest }}</td>
+            <td>{{ u.tstmp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+    </div>
+    </div>
+</div>

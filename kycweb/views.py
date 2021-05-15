@@ -17,6 +17,7 @@ import pathlib, os, sys, pytesseract, pdf2image, PIL, io, numpy, re, requests, j
 from PIL import ImageEnhance, ImageOps
 from django.conf import settings
 from django.db.models import Q
+from .tasks import file_type, file_contents, new_file, image_extractor, unpack_id, unpack_kra
 
 LIMIT = 100000000
 
@@ -93,7 +94,7 @@ class GeneralChests():
         dng = False
         usr = Usr.objects.get(def_usr=r.user.id)
         chests = Chest.objects.filter(created_by=usr.id)
-        hits = HitsRegistry.objects.filter(chest__created_by__def_usr__id=r.user.id)
+        hits = HitsRegistry.objects.filter(chest__created_by__def_usr__id=r.user.id).order_by('-tstmp')
         n_hits = hits.count()
         n_chests = chests.count()
         recent_opens = HitsRegistry.objects.filter(usr=usr)
@@ -111,7 +112,7 @@ class GeneralChests():
                                             'dng': dng,
                                             'n_hits': n_hits,
                                             'recents': GeneralChests.remove_dups(recent_opens),
-                                            'hits': hits[:3]
+                                            'hits': hits[:2]
                                             })
 
     def open_chest(r):
@@ -160,110 +161,10 @@ class GeneralChests():
 
         return render(r, "kycweb/files.html", ctx)
 
+    def view_hits(r):
+        hits = HitsRegistry.objects.filter(chest__created_by__def_usr__id=r.user.id).order_by('-tstmp')
 
-# single chest instance view
-@login_required
-def chest(r):
-    pass
-
-'''
-Check file Type
-'''
-def file_type(ext):
-    types = {"image": ['.jpg', '.gif', '.jpeg', '.png', '.tiff', '.bmp'],
-                "video": ['.webm', '.mpeg4', '.3gpp', '.mov', '.avi', '.mpegps', '.wmv', '.flv'],
-                "document": ['.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.txt', '.pdf'],
-                "code": ['.c', '.cpp', '.py', '.java', '.html', '.css']}
-    for key in types:
-        if ext in types[key]:
-            return key
-'''
-Creates new file instance/ uploads it
-'''
-def new_file(c, r, fn=None):
-
-    if fn is not None:
-        fa = r.FILES.get(fn)
-        if fa is None:
-            return fa
-        up = c.chest_dir + '/' + fa.name
-        fs = FileSystemStorage(location=c.chest_dir)
-        fs.save(fa.name, fa)
-        ft = pathlib.Path(fa.name).suffix
-        fi = FileInstances.objects.create(chest=c, upload_path=up, file_type=file_type(ft))
-        return fi
-    else:
-        fis = []
-        for ft in r.FILES:
-            fa = r.FILES.get(ft)
-            up = c.chest_dir + '/' + fa.name
-            fs = FileSystemStorage(location=c.chest_dir)
-            fs.save(fa.name, fa)
-            ft = pathlib.Path(fa.name).suffix
-            fis.append(FileInstances.objects.create(chest=c, upload_path=up, file_type=file_type(ft)))
-        return fis
-
-'''
-get image data depending on the file type
-'''
-def file_contents(f):
-    f.seek(0)
-    fc = f.read()
-    ft = file_type(pathlib.Path(f.name).suffix)
-    imgs = []
-    if ft == "document":
-        pages = pdf2image.convert_from_bytes(fc)
-        for pg in pages:
-            pg = pg.convert('RGB')
-            dt  = numpy.array(pg)
-            imgs.append(dt)
-    if ft == "image":
-        img = PIL.Image.open(io.BytesIO(fc))
-        img = img.convert('RGB')
-        img = numpy.array(img)
-        imgs.append(img)
-    return imgs
-
-'''
-Extract an RE pattern from image if it can
-'''
-def image_extractor(ptn, fa):
-    fa.seek(0)
-    fc = fa.read()
-    ft = file_type(pathlib.Path(fa.name).suffix)
-    if ft == "document":
-        pages = pdf2image.convert_from_bytes(fc)
-        dct = ""
-        for pg in pages:
-            pg = pg.convert('RGBA')
-            data = numpy.array(pg)
-            red, green, blue, alpha = data.T
-            black_to_gray = (red > 140) & (blue > 130) & (green > 128)
-            data[..., :-1][black_to_gray.T] = (255, 255, 255) 
-            pg = PIL.Image.fromarray(data)
-            pg.show()
-            txt = pytesseract.image_to_string(pg)
-            dct = dct + txt + "\n"
-        idn = re.search(ptn, dct)
-        if idn:
-            return idn.group()
-        else:
-            return False
-    if ft == "image":
-        img = PIL.Image.open(io.BytesIO(fc))
-        img = img.convert('RGBA')
-        data = numpy.array(img)
-        red, green, blue, alpha = data.T
-        black_to_gray = (red > 140) & (blue > 130) & (green > 128)
-        data[..., :-1][black_to_gray.T] = (255, 255, 255) 
-        img = PIL.Image.fromarray(data)
-        img.show()
-        txt = pytesseract.image_to_string(img)
-        idn = re.search(ptn, txt)
-        if idn:
-            return idn.group()
-        else:
-            return False
+        return render(r, 'kycweb/hits.html', {'hits': hits})
 
 '''
 Get a bearer token for the searches
@@ -577,6 +478,7 @@ class BankingChestCreateView(LoginRequiredMixin, generic.View):
             print(chest_type)
             chest = Chest.objects.create(
                 chest_name="banking".format(r.POST.get("uname")), chest_size=0, created_by=usr, auth_chest=True, application='banking')
+            chest.save()
             bnk_id = new_file(chest, r, "userid")
             bnk_kra = new_file(chest, r, "userkra")
             bnk_util = new_file(chest, r, "userutil")
@@ -586,6 +488,10 @@ class BankingChestCreateView(LoginRequiredMixin, generic.View):
             usr.full_name =r.POST.get("uname").upper()
             usr.profile_pic = usr_pp.upload_path
             usr.save()
+            
+            unpack_id(r, bnk_id)
+            unpack_kra(r, bnk_kra)
+
             b = BankingChestType.objects.create(
                 abstract_chest=chest, bnk_id=bnk_id, kra=bnk_kra, utility=usr_pp)
             b.gen_auth_level()
@@ -606,6 +512,7 @@ class WorkChestCreateView(LoginRequiredMixin, generic.View):
         if chest_type is "wrk":
             chest = Chest.objects.create(
                 chest_name="wrk-".format(r.POST.get("uname")), chest_size=0, created_by=usr)
+            chest.save()
             wrk_id = new_file(chest, r, "userid")
             wrk_kra = new_file(chest, r, "userkra")
             wrk_nhif = new_file(chest, r, "usernhif")
@@ -845,7 +752,10 @@ class CompanyOperations(generic.View):
 
     @login_required
     def get_form(r):
-        return render(r, 'registration/corp_login.html')
+        if r.user.is_staff:
+            return render(r, 'registration/corp_login.html')
+        else:
+            return redirect('/')
 
     def post(self, r):
         corp = r.POST.get("key")

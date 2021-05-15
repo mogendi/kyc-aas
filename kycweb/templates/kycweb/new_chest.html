@@ -22,6 +22,14 @@
   .error-field{
     color: red;
   }
+
+  #natid_file{
+    cursor: pointer;
+    color: black;
+  }
+  #natid_file span {
+    padding-top: 1%;
+  }
 </style>
 
 <div class="col-md-8">
@@ -96,25 +104,33 @@
                 </div>
               </div>
             </div>
-            <div class="row" id="bnk-id" hidden>
-              <div class="col-md-10">
-                <label class="bmd-label-floating">Add your ID</label>
-                <input type="file" class="form-control-file" name="userid" id="userid" onchange="checkid()">
+            <div class="row">
+              <div class="col-md-4" id="bnk-id" hidden>
+                <label id="natid_file" style="color: black; cursor: pointer;">
+                  Add your ID
+                  <span class="material-icons">add</span>
+                </label>
+                <input type="file" class="form-control-file" name="userid" id="userid" onchange="checkid()" hidden>
+              </div>
+
+              <div class="col-md-4" id="bnk-kra" hidden>
+                <label id="kra_file" style="color: black; cursor: pointer;">
+                  Add your KRA PIN
+                  <span class="material-icons">add</span>
+                </label>
+                <input type="file" class="form-control-file" name="userkra" id="userkra" onchange="checkkra()" hidden>
+              </div>
+
+              <div class="col-md-4" id="bnk-utility" hidden>
+                <label id="pp_file" style="color: black; cursor: pointer;">
+                  Add your Passport Photo
+                  <span class="material-icons">add</span>
+                </label>
+                <input type="file" class="form-control-file" name="userpp" id="userpp" onchange="checkpp()" hidden>
               </div>
             </div>
-            <div class="row" id="bnk-kra" hidden>
-              <div class="col-md-10">
-                <label class="bmd-label-floating">Add your KRA cert</label>
-                <input type="file" class="form-control-file" name="userkra" id="userkra" onchange="checkkra()">
-              </div>
-            </div>
-            <div class="row" id="bnk-utility" hidden>
-              <div class="col-md-10">
-                <label class="bmd-label-floating">Add a Passport Photo</label>
-                <input type="file" class="form-control-file" name="userpp" id="userpp" onchange="checkpp()">
-              </div>
-            </div>
-            <div class="row" id="bnk-utility">
+
+            <div class="row">
               <div class="col-md-10">
                 <p id="confirmation" class="text-info"></p>
               </div>
@@ -379,4 +395,15 @@
       document.getElementById("progress").removeAttribute("hidden");
       send_data(frm, url.protocol + "//" + url.host + "/" + "check/pic/", 3);
     }
+
+    
+    $("#natid_file").click(function(){
+      $("#userid").click();
+    });
+    $("#kra_file").click(function(){
+      $("#userkra").click();
+    });
+    $("#pp_file").click(function(){
+      $("#userpp").click();
+    });
   </script>

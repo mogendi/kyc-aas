@@ -21,6 +21,7 @@ urlpatterns = \
         path('extend/auth/', views.ChestView.extend_auth, name="extend_auth"),
         path('open/chest/', views.GeneralChests.open_chest, name="open_chest"),
         path('search/chest/', views.GeneralChests.search_chest, name="search_chest"),
+        path('view/all/hits/', views.GeneralChests.view_hits, name="view_hits"),
 
         #corporations
         path('companies/', views.GeneralCompany.as_view(), name="search_view"),

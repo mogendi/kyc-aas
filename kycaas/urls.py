@@ -24,5 +24,6 @@ urlpatterns = [
     path('login/', ath.LoginView.as_view(), name="login"),
     path('logout', ath.LogoutView.as_view(), name="logout"),
     path('', include('kycweb.urls')),
+    path('api/', include('kycapi.urls')),
     path('DC/', include('DC.urls')),
 ]

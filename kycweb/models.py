@@ -53,6 +53,41 @@ class Usr(models.Model):
         return self.def_usr.username
 
 '''
+If searches are going to be done on fields of specific documents
+then those documents needs to be unpacked (in this case its the national ID)
+and the kra pin certificate
+'''
+class NatId(models.Model):
+    # all of this models fields directly relate to info on the natid card
+    id_number = models.CharField(max_length=10, blank=True, null=True) 
+    full_name = models.CharField(max_length=500, blank=True, null=True)
+    bdate = models.CharField(max_length=20, blank=True, null=True)
+    sex = models.CharField(max_length=7, blank=True, null=True)
+    district_ob = models.CharField(max_length=25, blank=True, null=True)
+    place_oi = models.CharField(max_length=25, blank=True, null=True)
+    issue_date = models.CharField(max_length=15, blank=True, null=True)
+
+    usr = models.ForeignKey(Usr, on_delete=CASCADE, related_name="nat_id")
+    file = models.ForeignKey('FileInstances', on_delete=SET_NULL, related_name="id_file_source", blank=True, null=True)
+
+    def __str__(self):
+        return "{0}'s National ID".format(self.full_name)
+
+class KRAPinCert(models.Model):
+    # all of this models fileds corresponds to KRA pin cert info
+    pin = models.CharField(max_length=12, blank=True, null=True)
+    taxpayer_name = models.CharField(max_length=500, blank=True, null=True)
+    email = models.CharField(max_length=200, blank=True, null=True)
+    addr = models.CharField(max_length=500, blank=True, null=True)
+    po_box = models.CharField(max_length=30, blank=True, null=True)
+
+    usr = models.ForeignKey(Usr, on_delete=CASCADE, related_name="kra_pin")
+    file = models.ForeignKey('FileInstances', on_delete=SET_NULL, related_name="kra_file_source", blank=True, null=True)
+
+    def __str__(self):
+        return "{0}'s KRA cert".format(self.taxpayer_name)      
+
+'''
 Data chests where data is stored
 and access is controlled by the user that created it
 users can either create a registry for individual 

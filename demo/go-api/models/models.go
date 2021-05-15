@@ -4,4 +4,5 @@ package models
 type IdentificationDocumentInput struct {
 	IDDocType   string `json:"IdentificationDocument"`
 	IDDocNumber string `json:"IdentificationDocumentNumber"`
+	Application string `json:"SearchedApplication"`
 }

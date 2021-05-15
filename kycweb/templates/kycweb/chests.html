@@ -95,13 +95,15 @@
                   </table>
                 </div>
               </div>
+              <div class="card-footer">
+                <a href="#" id="view_all_hits" data-target="#exampleModal" role="button" data-toggle="modal">View all hits</a>
+              </div>
             </div>
 
           </div>
 
       </div>
 
-    </div>
     </div>
 
     <div class="row">
@@ -162,6 +164,22 @@
 
 </div>
 
+    <!-- Modal -->
+<div class="modal" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
     $(document).ready(function() {
       $('#new-chest').click(
@@ -179,6 +197,12 @@
               });
           }
       );
+      $('#view_all_hits').click(
+        function(){
+          $.get("view/all/hits/", function(data){
+            $('.modal-body').html(data);
+          });
+      });
 
       function open_chest(){
         var chest = $("#open_chest").val()
