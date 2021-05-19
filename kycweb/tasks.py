@@ -176,7 +176,7 @@ def unpack_id(r, fl):
         issue_date = doi,
 
         usr = usr,
-        file=fl.id
+        file=fl
     )
 
 '''

@@ -373,6 +373,7 @@ class ChestCreateView(LoginRequiredMixin, generic.View):
         if chest_type == "oth":
             usr = Usr.objects.get(def_usr=r.user.id)
             chest = Chest.objects.create(chest_name=r.POST.get('chest-name'), chest_size=0, created_by=usr)
+            chest.save()
             nfls = int(r.POST.get('size-flag'))
             for i in range(0, nfls):
                 new_file(chest, r)
@@ -708,10 +709,14 @@ class CompanyOperations(generic.View):
     login_url = 'login/'
     
     def get(self, r):
+        print(r)
         corp = r.GET.get("key")
-        if corp is None:
-            return redirect('/companies/dash/open/')
-        return render(r, 'kycweb/corp_dash.html', {'key': corp})
+        if r.user.is_staff:
+            if corp is None:
+                return redirect('/companies/dash/open/')
+            return render(r, 'kycweb/corp_dash.html', {'key': corp})
+        else:
+            return redirect('/')
 
     @login_required
     def get_form(r):
@@ -1058,3 +1063,7 @@ class GeneralValidator(generic.View):
         vl.delete()
 
         return JsonResponse({"deleted": True})
+
+
+def test(r):
+    return render(r, 'kycweb/test.html', {})

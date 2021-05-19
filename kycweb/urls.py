@@ -72,5 +72,6 @@ urlpatterns = \
 
         #test
         path('test/vid/', views.video_capture, name="test_vid"),
-        path('capture/stream/id/', views.face_detect_a, name="stream")
+        path('capture/stream/id/', views.face_detect_a, name="stream"),
+        path('test/', views.test, name="stream")
     ]

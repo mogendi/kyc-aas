@@ -10,5 +10,6 @@ router.register(r'users', views.UserViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('check/auth/', views.query_auth, name="check_auth"),
-    path('get/user/document/', views.get_document, name="get_document")    
+    path('get/user/document/', views.get_document, name="get_document"),
+    path('get/user/auth/', views.get_auth, name="get_user_auth")    
 ]

@@ -1,0 +1,181 @@
+<html>
+    <style>
+        
+        @import url('https://fonts.googleapis.com/css?family=Rubik:500');
+
+
+        body {
+        background-color: #F3FFBD;
+        font-family: 'Rubik', sans-serif;
+        }
+        .wrapper {
+        width: 1000px;
+        padding-top: 42px;
+        margin: auto;
+        height: 100%;
+        background-color: #247BA0;
+        text-align: center;
+        overflow: hidden;
+        }
+
+        .page {
+        margin: 21px auto 0 auto;
+        display: inline-block;
+        position: relative;
+        }
+        label {
+        display: inline-block;
+        width: 300px;
+        margin-right: 21px;
+        text-align: right;
+        font-family: 'Rubik', sans-serif;
+        font-size: 32px;
+        vertical-align: middle;
+        text-transform: uppercase;
+        color: #70C1B3;
+        }
+
+        input[type="text"],
+        textarea {
+        display: inline-block;
+        font-size: 32px;
+        vertical-align: middle;
+        background-color: #1B5A75;
+        border: none;
+        border-bottom: 5px solid #B2DBBF;
+        transition: border-bottom .75s;
+        color: #FFF;
+        padding: 10.5px;
+        }
+
+        textarea {
+        height: 40px;
+        transition: height .5s;
+        }
+
+        textarea:focus {
+        height: 100px;
+        }
+
+        input[type="text"]:focus {
+        border-bottom: 5px solid #FF1654;
+        }
+
+        .arrow-right {
+        width: 0; 
+        height: 0; 
+        border-top: 60px solid transparent;
+        border-bottom: 60px solid transparent;
+        border-left: 60px solid #FFFFFF;
+        transition: border-left .3s;
+        cursor: pointer;
+        position: relative;
+        z-index: 10;
+        }
+
+        .arrow-right:hover {
+        border-left: 60px solid #B2DBBF;
+        }
+
+        div.inputs {
+        display: inline-block;
+        width: 75%;
+        margin-right: 21px;
+        vertical-align: middle;
+        position: relative;
+        z-index: 5;
+        }
+
+        div#next-button {
+        display: inline-block;
+        vertical-align: middle;
+        width: 15%;
+        }
+
+        .active {
+        animation: slide-in forwards 1s ;
+        }
+
+        .inactive {
+        animation: slide-out forwards 1s ;
+        }
+
+        @keyframes slide-in {
+        0% {
+            right: -150%;
+        }
+        100%{
+            right: 0;
+        }
+        }
+
+        @keyframes slide-out {
+        0% {
+            right: 0;
+        }
+        100%{
+            right: 150%;
+        }
+        }
+
+        div#progress-bar {
+        width: 100%;
+        height: 10px;
+        background-color: #B2DBBF;
+        margin-top: 42px;
+        }
+
+        div#progress-bar div {
+        height: 100%;
+        width: 0%;
+        background-color: #FF1654;
+        transition: width 1s;
+        }
+    </style>
+    <div class="wrapper">
+        <form id="target">
+        <div class="inputs">
+            <div class="page"> 
+            <label>ID NUMBER:</label>
+            <input type="text">
+            </div>
+            </div>  
+            <div class="arrow-right" id="next-button"></div>
+        </form>
+    </div>
+    <p style="font-size:large" class="content"></p>
+</html>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+
+<script>
+$(document).ready(function(){
+
+var currentPage = 0;
+
+var form = document.getElementById('target');
+var pages = form.children[0].children;
+
+for(var i = 0; i < pages.length; i++ )
+  {
+    pages[i].style.display = "none";
+  }
+pages[currentPage].style.display = "block";
+pages[currentPage].classList.add('active');
+document.getElementById('next-button').addEventListener('click', nextPage);
+
+function nextPage() 
+{
+  $.post('/api/get/user/document/', 
+        {
+            "doc_type": "national_id",
+            "user": "dmcpqsdccvns",
+            "key": "jrpkylztwlxb"
+        },
+        function(data){
+            console.log(data);
+            $(".content").html(data);
+        }
+    );
+}
+});
+</script>
