@@ -37,6 +37,15 @@
             </li>
 
           </ul>
+          <ul class="nav">
+            <li class="nav-item active">
+              <a class="nav-link" href="#" id="auths">
+                <i class="material-icons">security</i>
+                <p>Authenticators</p>
+              </a>
+            </li>
+
+          </ul>
         </div>
       </div>
 
@@ -94,16 +103,30 @@
   $(document).ready(function() {
     $('#coorp').click(
       function(){
+        $("#auths").parent().removeClass("active");
         $("#coorp").parent().addClass("active");
-        url = '/companies/info/?key=' + '{{ key }}';
+        var url = '/companies/info/?key=' + '{{ key }}';
         console.log('{{ key }}');
         $.get(url, function(data, status){
             if(data.key == 'None'){
               window.location.href = '/companies/dash/open/';
             }
             $('.content').html(data);
-      })
+      });
     });
+
+    $("#auths").click(
+        function(){
+          $("#coorp").parent().removeClass("active");
+          $("#auths").parent().addClass("active");
+          var url = '/company/auth/?key=' + '{{ key }}';
+          $.get(url, function(data){
+            if(data.key == 'None'){
+              window.location.href = '/companies/dash/open/';
+            }
+            $('.content').html(data);
+          });
+        });
 
     $("#coorp").trigger('click');
 

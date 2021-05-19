@@ -60,7 +60,22 @@
 
 <script>
     $(document).ready(function(){
+        $(".form-group").focusin(function(){
+            $(this).addClass('is-focused');
+        });
 
+        $(".form-group").focusout(function(){
+            $(this).removeClass('is-focused');
+        });
+
+        $("input").on('input', function(){
+            if($(this).val().length > 0){
+                $(this).parent().addClass('is-filled');
+            } else {
+                $(this).parent().removeClass('is-filled');
+            }
+        });
+        
         function login_(){
             let key = $("#key").val();
             let name = $("#name").val();

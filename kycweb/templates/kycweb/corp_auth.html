@@ -1,0 +1,74 @@
+{% csrf_token %}
+
+<div class="row">
+
+    <div class="col-md-3">
+        <a href="#" onclick="new_auth()">    
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-icon">
+                        <p class="text-info">Create New Authenticator</p>
+                        <i class="material-icons">
+                            add_circle_outline
+                        </i>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+
+</div>
+
+<div class="row">
+    {% if len_ > 0 %}
+        {% for a in auths %}
+        <div class="col-md-3">     
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-icon">
+                        <p class="text-info">{{ a.name }}</p>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <p>Delete Authenticator</p>
+                    <i class="material-icons" onclick="del_(this)" name="{{ a.name }}">delete</i>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-md-3">     
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-icon">
+                        <p class="text-info">No Authenticators yet.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function new_auth(){
+        $.get('/validator/create/?key=' + "{{key}}", function(data){
+            $(".content").html(data);
+        });
+    }
+
+    function edit_(el){
+        $.post('/auth/delete/', {'csrfmiddlewaretoken' :'{{csrf_token}}', 'key': "{{ key }}", 'auth_': el.name},
+        function(data){
+            if(data.deleted){
+                console.log(data);
+                $.get('company/auth/', function(data){
+                    $(".content").html(data);
+                });
+            }
+        });
+    }
+
+    window.edit_ = edit_;
+    window.new_auth = new_auth;
+</script>

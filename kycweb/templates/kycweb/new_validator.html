@@ -1,0 +1,226 @@
+<style>
+    /* The switch - the box around the slider */
+   .switch {
+     position: relative;
+     display: inline-block;
+     width: 60px;
+     height: 34px;
+   }
+ 
+   .border-icn {
+     border: 3px solid;
+   }
+    /* Hide default HTML checkbox */
+   .switch input {
+     opacity: 0;
+     width: 0;
+     height: 0;
+   }
+ 
+   /* The slider */
+   .slider {
+     position: absolute;
+     cursor: pointer;
+     top: 0;
+     left: 0;
+     right: 0;
+     bottom: 0;
+     background-color: #ccc;
+     -webkit-transition: .4s;
+     transition: .4s;
+   }
+ 
+   .slider:before {
+     position: absolute;
+     content: "";
+     height: 26px;
+     width: 26px;
+     left: 4px;
+     bottom: 4px;
+     background-color: white;
+     -webkit-transition: .4s;
+     transition: .4s;
+   }
+ 
+   input:checked + .slider {
+     background-color: #2196F3;
+   }
+ 
+   input:focus + .slider {
+     box-shadow: 0 0 1px #2196F3;
+   }
+ 
+   input:checked + .slider:before {
+     -webkit-transform: translateX(26px);
+     -ms-transform: translateX(26px);
+     transform: translateX(26px);
+   }
+ 
+   /* Rounded sliders */
+   .slider.round {
+     border-radius: 34px;
+   }
+ 
+   .slider.round:before {
+     border-radius: 50%;
+   } 
+</style>
+
+<div class="col-md-8">
+    <div class="card">
+        <div class="card-header card-header-primary">
+            <h4>Create Authenticator</h4>
+        </div>
+        <div class="card-body">
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group bmd-form-group">
+                    <label class="bmd-label-floating">Authenticator Name</label>
+                    <input type="text" class="form-control vdi" name="auth-name" id="auth-name">
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-info">Enable Default Validator Fields ?</p>
+            <div class="row">
+                <p class="text-info" style="padding: 5%; padding-top: 1.5%; ">National ID:</p>
+                <label class="switch">
+                    <input type="checkbox" id="id_field">
+                    <span class="slider round"></span>
+                </label>
+
+                <p class="text-info" style="padding: 5%; padding-top: 1.5%; ">KRA Pin:</p>
+                <label class="switch">
+                    <input type="checkbox" id="kra_field">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <div class="row validator_form">
+                <div class="col-md-4">
+                    <div class="form-group bmd-form-group">
+                    <label class="bmd-label-floating">Validator Name</label>
+                    <input type="text" class="form-control vdi" name="validator-name" id="validator-name">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group bmd-form-group">
+                    <label class="bmd-label-floating">Validator URL</label>
+                    <input type="text" class="form-control vdi" name="validator-url" id="validator-url">
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group bmd-form-group">
+                    <label class="bmd-label-floating">Validator Pattern</label>
+                    <input type="text" class="form-control vdi" name="validator-pattern" id="validator-pattern">
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="btns pull-right" id="btns">
+                <div class="row">
+                    <button class="btn btn-primary pull-right" id="new-field" onclick="new_field()">Add validator field</button>
+                    <button class="btn btn-primary pull-right" id="rem-field" onclick="rem_field()">Remove validator field</button>
+                </div>
+                <div class="row">
+                    <button class="btn btn-primary pull-right" id="new-auth" onclick="validator_create()">Create Authenticator</button>
+                </div>
+            </div>
+            
+            <p class="text-danger" id="err"></p>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+		integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+ 	    crossorigin="anonymous"></script>
+
+<script>
+    $(".form-group").focusin(function(){
+      $(this).addClass('is-focused');
+    });
+
+    $(".form-group").focusout(function(){
+      $(this).removeClass('is-focused');
+    });
+
+    $("input").on('input', function(){
+      if($(this).val().length > 0){
+        $(this).parent().addClass('is-filled');
+      }
+    });
+    
+    function validator_create(){
+        var forms = document.querySelectorAll(".validator_form");
+        var an = document.getElementById("auth-name").value;
+        for(form in forms){
+            var form = forms[form];
+            var id = document.getElementById("id_field");
+            var kra = document.getElementById("kra_field");
+
+            console.log("id:", id, "kra:", kra);
+
+            var vn = form.querySelector("#validator-name").value;
+            var vu = form.querySelector("#validator-url").value;
+            var vp = form.querySelector("#validator-pattern").value;
+
+            if(vn == "" || vn == null){
+                $("#err").html("Please enter a validator name");
+                return;
+            } else {
+                if((vu == "" || vu == null) && (vp == "" || vp == null)){
+                    $("#err").html("Please enter either a validator source or pattern");
+                    return;
+                }
+            }
+
+            data = {
+                'auth_n': an,
+                'use_id': id.checked,
+                'use_kra': kra.checked,
+                'validator_name': vn,
+                'validator_url': vu,
+                'validator_pattern': vp,
+                'csrfmiddlewaretoken': '{{csrf_token}}',
+                'key': '{{ key }}'
+            };
+            $.post('/validator/create/', data, 
+            function(rdata){
+                if(data.created){
+                    window.location = '/companies/dash/?key=' + data.key;
+                }
+            });
+        }
+    }
+
+    function new_field(){
+        var org = document.querySelector(".validator_form");
+        var clone = org.cloneNode(true);
+
+        var btn = document.getElementById("btns");
+        pr = btn.parentNode;
+
+        pr.removeChild(btn);
+        pr.appendChild(clone);
+        pr.appendChild(btn)
+    }
+
+    function rem_field(){
+        var rel = document.querySelectorAll(".validator_form");
+        if (rel.length > 1){
+            rel[rel.length-1].remove();
+        } else {
+            return;
+        } 
+    }
+
+    window.rem_field = rem_field;
+    window.new_field = new_field;
+    window.validator_create = validator_create;
+</script>

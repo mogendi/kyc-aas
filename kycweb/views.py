@@ -1,23 +1,19 @@
-from json.encoder import JSONEncoder
-from django import views
-from django.http import request
 from django.http.response import Http404
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
-from face_recognition.api import face_encodings, face_locations
+from face_recognition.api import compare_faces, face_distance, face_encodings, face_locations
 from .forms import UserForm, UsrForm, FileForm
-from .models import ( BankingChestType, ChestRegistry, Chest, Corporation, 
-                      Usr, FileInstances, HitsRegistry, WorkChestType, 
-                      Validator, HostRegistry, CorpKeyUses )
+from .models import ( BankingChestType, ChestRegistry, Chest, Corporation, KRAPinCert, NatId, 
+                      Usr, FileInstances, HitsRegistry, ValInstance, WorkChestType, 
+                      Validator, HostRegistry, CorpKeyUses, Authenticator )
 from django.views import generic
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, JsonResponse
-from django.core.files.storage import FileSystemStorage
-import pathlib, os, sys, pytesseract, pdf2image, PIL, io, numpy, re, requests, json, Levenshtein as lev, datetime, face_recognition, cv2
-from PIL import ImageEnhance, ImageOps
+import pathlib, os, re, requests, Levenshtein as lev, datetime, face_recognition, random as rand, tempfile
 from django.conf import settings
 from django.db.models import Q
-from .tasks import file_type, file_contents, new_file, image_extractor, unpack_id, unpack_kra
+from .tasks import (file_contents, new_file, image_extractor, 
+                    unpack_id, unpack_kra, face_detect, validate)
 
 LIMIT = 100000000
 
@@ -98,6 +94,8 @@ class GeneralChests():
         n_hits = hits.count()
         n_chests = chests.count()
         recent_opens = HitsRegistry.objects.filter(usr=usr)
+        vals = ValInstance.objects.filter(usr=usr)
+        vl = vals.count()
         if n_chests>0:
             for i in chests:
                 n_size += int(i.chest_size)/1000000
@@ -112,7 +110,9 @@ class GeneralChests():
                                             'dng': dng,
                                             'n_hits': n_hits,
                                             'recents': GeneralChests.remove_dups(recent_opens),
-                                            'hits': hits[:2]
+                                            'hits': hits[:2],
+                                            'vals': vals,
+                                            'vl': vl
                                             })
 
     def open_chest(r):
@@ -227,6 +227,29 @@ def check_id(r):
             'verified': False,
         }
         return JsonResponse(ctx)
+
+'''
+Accepts request with a frame [containing an id?]
+and attempts to unpack info to ensure its valid
+'''
+def check_id_indp(r):
+    frame = r.FILES.get('frame')
+    face = face_detect(frame)
+    print(face)
+    if len(face) > 0:
+        idn = image_extractor(r'[0-9]{8}', frame)
+        uname = image_extractor(r"(FULL NAMES)[ |\n]*([A-Z'’ ]+ [A-Z'’ ]+ [A-Z'’ ]*)", frame)
+        if uname is not False and idn is not False and uname is not None and idn is not None:
+            bday = image_extractor(r'(DATE OF BIRTH)[ |\n]*[0-9]{2}[. ,]+[0-9]{2}[. ,]+[0-9]{4}', frame)
+            if bday is not False and bday is not None:
+                print(bday)
+                return JsonResponse({"verified": True})
+            else:
+                return JsonResponse({"verified": False})
+        else:
+            return JsonResponse({"verified": False})
+    else:
+        return JsonResponse({"verified": False})
 
 '''
 Accept KRA files and checks their validity
@@ -550,66 +573,6 @@ class AuthLevelSearch(LoginRequiredMixin, generic.View):
         chest = Chest.objects.get()
 
 '''
-Performs a validation, given a validator
-'''
-def validate(r, vname, fname):
-    f = r.POST.get(fname)
-    v = Validator.objects.get(name=vname)
-    if v.validator is None and v.pattern is None:
-        return True
-    elif v.validator is None and v.pattern is not None:
-        if image_extractor(v.pattern, f) is not False:
-            return True
-        else:
-            return False
-    elif v.validator is not None and v.pattern is not None:
-        ex = image_extractor(v.pattern, f)
-        if ex is not False:
-            # post to the validator
-            if v.identifier is not None:
-                ctx = {
-                    v.identifier: ex
-                } 
-                r = requests.post(v.validator, data=ctx)
-                if r.status_code == 200:
-                    return True
-                else:
-                    return False
-            else:
-                ctx = {
-                    f.name: ex
-                } 
-                r = requests.post(v.validator, data=ctx)
-                if r.status_code == 200:
-                    return True
-                else:
-                    return False
-        else:
-            return False
-    elif v.validator is not None and v.pattern is None:
-        if v.identifier is not None:
-            ctx = {
-                v.identifier: f
-            }
-            r = requests.post(v.validator, data=ctx)
-            if r.status_code == 200:
-                return True
-            else:
-                return False
-        else:
-            ctx = {
-                f.name: f
-            }
-            r = requests.post(v.validator, data=ctx)
-            if r.status_code == 200:
-                return True
-            else:
-                return False
-    else:
-        return False
-
-
-'''
 Creates a generic validator
 '''
 class ValidatorCreateView(generic.View):
@@ -799,6 +762,8 @@ class CompanyOperations(generic.View):
         else:
             cp.enabled = True
 
+        cp.save()
+
         return JsonResponse({'toggled': True})
 
     def new_host(r):
@@ -860,3 +825,236 @@ class CompanyOperations(generic.View):
             }
 
             return render(r, 'kycweb/uses.html', ctx)
+
+def video_capture(r):
+    return render(r, "kycweb/video_capture.html", {})
+
+def face_detect_a(r):
+    fl = r.FILES.get("frame")
+    fl.seek(0)
+    ft = tempfile.NamedTemporaryFile()
+    ft.write(fl.read())
+
+    fc = face_recognition.load_image_file(ft.name)
+    face = face_locations(fc)
+    face = face_encodings(fc, face)
+
+    fl2 = r.FILES.get("userid")
+    fl2.seek(0)
+    ft2 = tempfile.NamedTemporaryFile()
+    ft2.write(fl.read())
+
+    fc2 = face_recognition.load_image_file(ft2.name)
+    face2 = face_locations(fc2)
+    face2 = face_encodings(fc2, face2)
+
+    d = compare_faces([face2[0]], face[0])
+
+    print(d[0])
+
+    return JsonResponse({"verified": d[0]})
+
+'''
+Grouping for default validators
+'''
+class DefaultValidators(generic.View):
+
+    def validate_id(r):
+        fa = r.FILES.get("userid")
+        idn = image_extractor(r'[0-9]{8}', fa)
+        uname = image_extractor(r"(FULL NAMES)[ |\n]*([A-Z'’ ]+ [A-Z'’ ]+ [A-Z'’ ]*)", fa)
+        if uname is False:
+            ctx = {
+                'verified': False,
+            }
+            return JsonResponse(ctx)
+        uname = re.search(r"[A-Z'’ ]+ [A-Z'’ ]+ [A-Z'’ ]*", uname).group()
+        bday = image_extractor(r'(DATE OF BIRTH)[ |\n]*[0-9]{2}[. ,]+[0-9]{2}[. ,]+[0-9]{4}', fa)
+        bday = re.search(r'[0-9]{2}[. ,]+[0-9]{2}[. ,]+[0-9]{4}', bday).group()
+
+        if idn is not None and idn is not False:
+            if uname is not None:
+                if bday is not None and bday is not False:
+                    return JsonResponse({'verified': True})
+                else:
+                    return JsonResponse({'verified': False})
+            else:
+                return JsonResponse({'verified': False})
+        else:
+            return JsonResponse({'verified': False})
+
+    def validate_kra(r):
+        fa = r.FILES.get("userkra")
+        idn = image_extractor(r'[A-G][0-9]{9}[A-G]', fa)
+        uname = image_extractor(r"(Taxpayer Name)[ \n]*([A-Z'’ ]+ [A-Z'’ ]+ [A-Z'’ ]*)", fa)
+        if uname is False:
+            ctx = {
+                'verified': False,
+            }
+            return JsonResponse(ctx)
+        uname = re.search(r"[A-Z'’ ]+ [A-Z'’ ]+ [A-Z'’ ]*", uname).group()
+
+        if idn is not None and idn is not False:
+            if uname is not None:
+                return JsonResponse({'verified': True})
+            else:
+                return JsonResponse({'verified': False})
+        else:
+            return JsonResponse({'verified': False})
+
+'''
+All validator relevant info
+'''
+class GeneralValidator(generic.View):
+
+    def get(self, r):
+        key = hold = None
+
+        try:
+            key = hold = r.GET.get('key')
+        except:
+            key = None
+            return JsonResponse({'key': key})
+        
+        try:
+            key = Corporation.objects.get(key=key)
+        except:
+            return JsonResponse({'key': key})
+
+        if not key.enabled:
+            return JsonResponse({'key': key})
+
+        return render(r, 'kycweb/new_validator.html', {'key': hold})
+
+    def post(self, r):
+        # verify the coorps key
+        key = corp = None
+        try:
+            key = r.POST.get("key")
+        except:
+            return JsonResponse({'key': key})
+
+        try:
+            corp = Corporation.objects.get(key=key)
+        except:
+            return JsonResponse({'key': corp})
+
+        # verify the name is unique
+        auth_ = None
+        try:
+            auth_ = Authenticator.objects.get(name=r.POST.get('auth_n'))
+        except:
+            auth_ = r.POST.get('auth_n')
+            auth_ = Authenticator.objects.create(name=auth_)
+
+        id = r.POST.get("use_id")
+
+        if id or id == 'true':
+            id = Validator.objects.get(default=True, identifier="userid")
+            id.pk = None
+            id.identifier = "userid_" + str(rand.randint(10000, 99999))
+            id.auth_model = auth_
+            id.save()
+
+        id = r.POST.get("use_kra")
+
+        if id or id == 'true':
+            id = Validator.objects.get(default=True, identifier="userkra")
+            id.pk = None
+            id.identifier = "userid_" + str(rand.randint(10000, 99999))
+            id.auth_model = auth_
+            id.save()
+
+        # unpack everything into models
+        val = Validator.objects.create(
+            name       = r.POST.get('validator_name'),
+            validator  = r.POST.get('validator_url'),
+            pattern    = r.POST.get('validator_pattern'),
+            identifier = r.POST.get('validator_name').lower() + "_ident",
+            default    = False,
+            auth_model = auth_
+        )
+
+        return JsonResponse({'created': True, 'key': key})
+
+    def get_auth_form(r):
+        auth_ = r.GET.get("authenticator") # the authenticator
+        auth_ = Authenticator.objects.get(name=auth_)
+        usr = Usr.objects.get(def_usr=r.user.id)
+        id = kr = False
+
+        try:
+            NatId.objects.get(usr=usr)
+            id = True
+        except:
+            id = False
+
+        try:
+            KRAPinCert.objects.get(usr=usr)
+            kr = True
+        except:
+            kr = False
+
+        if id:
+            qr = ~Q(identifier__contains="userid")
+        if kr:
+            qrp = ~Q(identifier__contains="userkra")
+
+        
+        fields = Validator.objects.filter(Q(auth_model=auth_) & qr & qrp)
+        print(fields, kr, id)
+
+        return render(r, 'kycweb/validator.html', {'fields': fields, 'app': auth_})
+
+    def get_auth_view(r):
+        auths_ = Authenticator.objects.all()
+
+        len_ = auths_.count()
+
+        return render(r, 'kycweb/auths.html', {'auths': auths_, 'len_':len_})
+
+    def get_auth_create_view(r):
+        key = r.GET.get("key")
+        corp = Corporation.objects.get(key=key)
+        auths = Authenticator.objects.filter(created_by=corp)
+
+        len_ = auths.count()
+
+        print(auths, len_)
+
+        return render(r, "kycweb/corp_auth.html", {"auths": auths, 'len_': len_, 'key': key})
+
+    def del_auth(r):
+        key = Corporation.objects.get(key = r.POST.get("key"))
+        auth = r.POST.get("auth_")
+
+        auth_ = Authenticator.objects.get(name=auth, created_by=key)
+        auth_.delete()
+        return JsonResponse({'deleted': True})
+
+    def verify(r):
+        print(r.POST.get("vname"), r.POST.get("fname"))
+        if validate(r, r.POST.get("vname"), r.POST.get("fname")):
+            return JsonResponse({'validated': True})
+        else:
+            return JsonResponse({'validated': False})
+
+    def new_instance(r):
+        for key in r.FILES:
+            vl = Validator.objects.get(identifier=key)
+            vla = image_extractor(r'' + vl.pattern, r.FILES[key])
+            print(vla)
+            usr = Usr.objects.get(def_usr=r.user.id)
+
+            ValInstance.objects.create(
+                val = vl,
+                ident = vla,
+                usr = usr
+            )
+        return JsonResponse({'created': True})
+
+    def delete_val(r):
+        vl = ValInstance.objects.get(pk=r.POST.get("vid"))
+        vl.delete()
+
+        return JsonResponse({"deleted": True})

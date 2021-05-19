@@ -3,48 +3,50 @@
     <div class="row">
 
       <div class="col-md-7">
-          <div class="card">
-              <div class="col-md">
-                  <div class="card">
-                    <div class="card-header card-header-primary">
-                      <h4 class="card-title ">Chests</h4>
-                      {% if n_chests > 0 %}
-                      <p class="card-category"> Here are all your chests! </p>
-                      {% else %}
-                      <p class="card-category"> There is nothing here YET! </p>
-                      {% endif %}
-                    </div>
-                    <div class="card-body">
+          <div class="row">
+            <div class="card">
+                <div class="col-md">
+                    <div class="card">
+                      <div class="card-header card-header-primary">
+                        <h4 class="card-title ">Chests</h4>
                         {% if n_chests > 0 %}
-                        <div class="table-responsive">
-                          <table class="table">
-                            <thead class=" text-primary">
-                              <tr><th>ID</th><th>Name</th><th>Size</th><th>Delete</th></tr>
-                            </thead>
-                            <tbody>
-                              {% for c in chests %}
-                              <tr>
-                                <td><a href="#" class="refid" id="{{c.chest_ID}}">{{c.chest_ID}}</a></td>
-                                <td>{{c.chest_name}}</td>
-                                <td class="text-primary">{{c.chest_size}}</td>
-                                <td><a href="{% url 'delete_chest' c.chest_ID %}"><i class="material-icons">delete</i></a></td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
+                        <p class="card-category"> Here are all your chests! </p>
                         {% else %}
-                        <div id="typography">
-                          <div class="card-title">
-                            <h2>You have no chests YET.</h2>
+                        <p class="card-category"> There is nothing here YET! </p>
+                        {% endif %}
+                      </div>
+                      <div class="card-body">
+                          {% if n_chests > 0 %}
+                          <div class="table-responsive">
+                            <table class="table">
+                              <thead class=" text-primary">
+                                <tr><th>ID</th><th>Name</th><th>Size</th><th>Delete</th></tr>
+                              </thead>
+                              <tbody>
+                                {% for c in chests %}
+                                <tr>
+                                  <td><a href="#" class="refid" id="{{c.chest_ID}}">{{c.chest_ID}}</a></td>
+                                  <td>{{c.chest_name}}</td>
+                                  <td class="text-primary">{{c.chest_size}}</td>
+                                  <td><a href="{% url 'delete_chest' c.chest_ID %}"><i class="material-icons">delete</i></a></td>
+                                </tr>
+                                {% endfor %}
+                              </tbody>
+                            </table>
                           </div>
-                          {% endif %}
-                          <div class="row" style="padding-left: 1.5%;">
-                              <h6>Create a new chest <a href="#" id="new-chest">here</a> </h6>
+                          {% else %}
+                          <div id="typography">
+                            <div class="card-title">
+                              <h2>You have no chests YET.</h2>
+                            </div>
+                            {% endif %}
+                            <div class="row" style="padding-left: 1.5%;">
+                                <h6>Create a new chest <a href="#" id="new-chest">here</a> </h6>
+                            </div>
                           </div>
-                        </div>
+                      </div>
                     </div>
-                  </div>
+                </div>
               </div>
           </div>
 
@@ -103,6 +105,35 @@
           </div>
 
       </div>
+
+      {% if vl > 0 %}
+      <div class="row">
+        <div class="card">
+          <div class="card-header card-header-primary">
+            <h4 class="card-title">You are validated for:</h4>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <div class="table">
+                <table class="table">
+                  <thead class="text-primary">
+                    <tr><th>Name</th><th>Delete Validator</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for v in vals%}
+                    <tr>
+                      <td><p>{{ v.val.name }}</p></td>
+                      <td><i class="material-icons" style="cursor: pointer;" id="{{v.id}}" onclick="del(this)">close</i></td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif%}
 
     </div>
 
@@ -169,7 +200,7 @@
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+        <h5 class="modal-title" id="exampleModalLabel">All Hits</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
@@ -182,6 +213,22 @@
 
 <script>
     $(document).ready(function() {
+      $(".form-group").focusin(function(){
+        $(this).addClass('is-focused');
+      });
+
+      $(".form-group").focusout(function(){
+        $(this).removeClass('is-focused');
+      });
+
+      $("input").on('input', function(){
+        if($(this).val().length > 0){
+          $(this).parent().addClass('is-filled');
+        } else {
+          $(this).parent().removeClass('is-filled');
+        }
+      });
+      
       $('#new-chest').click(
           function(){
               $.get('new_chest/', function(data, status){
@@ -256,6 +303,16 @@
         });
       }
 
+      function del(el){
+        $.post('validator/delete/', {"csrfmiddlewaretoken": "{{csrf_token}}", "vid": el.id},
+        function(data){
+          if(data.deleted){
+            $(el).parent().parent().remove();
+          }
+        });
+      }
+
+      window.del = del;
       window.open_chest = open_chest;
       window.open_chest_direct = open_chest_direct;
       window.search_chest = search_chest;

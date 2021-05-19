@@ -38,6 +38,7 @@ urlpatterns = \
         path('company/toggle/key/', views.CompanyOperations.toggle_key, name="toggle_key"),
         path('company/remove/host/', views.CompanyOperations.rem_host, name="remove_host"),
         path('company/toggle/uses/', views.CompanyOperations.toggle_uses, name="toggle_uses"),
+        path('company/auth/', views.GeneralValidator.get_auth_create_view, name="company_auth"),
 
         #files
         path('check/id/', views.check_id, name="checkid"),
@@ -53,8 +54,23 @@ urlpatterns = \
         path('remove/permissions/<int:reg_id>', views.ChestView.remove_permissions, name="remove_permissions"),
         path('get/indv/perm/<int:pid>', views.ChestView.get_indiv_perm, name="get_indiv_perm"),
 
+        #validators
+        path('validate/id/', views.DefaultValidators.validate_id, name="validate_id"),
+        path('validate/kra/', views.DefaultValidators.validate_kra, name="validate_kra"),
+        path('validator/create/', views.GeneralValidator.as_view(), name="create_validator"),
+        path('validator/auth/', views.GeneralValidator.get_auth_form, name="validate_user"),
+        path('validator/view/', views.GeneralValidator.get_auth_view, name="authenticator_view"),
+        path('auth/delete/', views.GeneralValidator.del_auth, name="authenticator_del"),
+        path('validator/verify/', views.GeneralValidator.verify, name="verify"),
+        path('validator/new/instance/', views.GeneralValidator.new_instance, name="new_instance"),
+        path('validator/delete/', views.GeneralValidator.delete_val, name="delete_val"),
+
         #static
         path('demo/', static.serve),
         path('static/', static.serve),
-        path('assets/js', static.serve)
+        path('assets/js', static.serve),
+
+        #test
+        path('test/vid/', views.video_capture, name="test_vid"),
+        path('capture/stream/id/', views.face_detect_a, name="stream")
     ]

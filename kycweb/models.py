@@ -1,5 +1,6 @@
 from enum import unique
 import re
+from sys import intern
 from typing import Pattern
 from django.core.files.base import File
 from django.db import models
@@ -10,6 +11,7 @@ from django.db.models.base import Model
 
 from django.db.models.deletion import CASCADE, SET, SET_NULL
 from django.db.models.fields.related import ForeignKey
+import numpy
 from numpy.lib.shape_base import _apply_over_axes_dispatcher
 
 def upload_folder(instance, filename):
@@ -44,7 +46,7 @@ class Usr(models.Model):
         if self.data_dir is None or len(self.data_dir) < 1:
             self.data_dir = "users/{0}/".format(self.def_usr.id)
             os.makedirs(self.data_dir)
-        if len(self.ctx_id)<1:
+        if len(self.ctx_id)<1 or self.ctx_id is None:
             ltrs = string.ascii_lowercase
             self.ctx_id = ''.join(random.choice(ltrs) for i in range(12))
         super(Usr, self).save(*args, **kwargs)
@@ -114,7 +116,7 @@ class Chest(models.Model):
 
     # Each chest gets its own subdirectory on creation
     def save(self, *args, **kwargs):
-        if len(self.chest_ID)<1:
+        if len(self.chest_ID)<1 or self.chest_ID is None:
             ltrs = string.ascii_lowercase
             self.chest_ID = ''.join(random.choice(ltrs) for i in range(12))
             if len(self.chest_name) < 1:
@@ -148,7 +150,7 @@ class FileInstances(models.Model):
     # Whenever a new file instance is created
     # the chest size needs to be updated
     def save(self, *args, **kwargs):
-        if len(self.upload_path) < 1:
+        if len(self.upload_path) < 1 or self.upload_path is None:
             self.upload_path = self.chest.chest_dir
             nbytes = sum(os.path.getsize(f) for f in os.listdir(self.chest.chest_dir) if os.path.isfile(f))
             self.chest.chestsize = str(nbytes)
@@ -175,8 +177,9 @@ class Corporation(models.Model):
     enabled = models.BooleanField(default=True, verbose_name="company_key_enabled")
 
     def save(self, *args, **kwargs):
-        ltrs = string.ascii_lowercase
-        self.key = ''.join(random.choice(ltrs) for i in range(12))
+        if len(self.key) < 1 or self.name is None:
+            ltrs = string.ascii_lowercase
+            self.key = ''.join(random.choice(ltrs) for i in range(12))
         super(Corporation, self).save(*args, **kwargs)
 
     def __str__(self) -> str:
@@ -318,6 +321,16 @@ class WorkChestType(models.Model):
     nssf = ForeignKey(FileInstances, on_delete=SET_NULL, blank=True, null=True, related_name="nssf")
     cogc = ForeignKey(FileInstances, on_delete=SET_NULL,  blank=True, null=True, related_name="cogc")
 
+'''
+All related validators need to link to the same model
+as well as storage for autheticator met-adata
+'''
+class Authenticator(models.Model):
+    name = models.CharField(max_length=200, unique=True)
+    created_by = models.ForeignKey(Corporation, on_delete=SET_NULL, blank=True, null=True, related_name="corp_creator")
+
+    def __str__(self) -> str:
+        return self.name
 
 ''' 
 For generic extentions, if a new auth model is created, this
@@ -334,7 +347,7 @@ and expects the pattern to be POSTed to it.
   the pattern assumes the document is valid.
 - If neither a validator nor a pattern exists, the input will be accepted as 
   trivially true.
-- Whether or not the validator accepts the input context give is assumes
+- Whether or not the validator accepts the input context given is assumed
   to be reflected by the return status code. 
 The identifier is essentially what the validator expects the pattern to 
 be called in its namespace. if its null, it'll be assumed that the 
@@ -342,12 +355,24 @@ file name is the identifier (this is undefined behaviourally).
 '''
 class Validator(models.Model):
     # Identifier for the validator
-    name       = models.CharField(max_length=256, unique=True)
+    name       = models.CharField(max_length=256, unique=False)
     validator  = models.CharField(max_length=256, null=True, blank=True)
     pattern    = models.CharField(max_length=256, null=True, blank=True)
-    identifier = models.CharField(max_length=256, blank=True, null=True)
+    identifier = models.CharField(max_length=256, unique=True)
     # The auth for validators is a binary: 0 for nothing | 1 for everything
-    auth       = models.BooleanField(verbose_name="Allow auth for this validator", default=False)
+    internal   = models.BooleanField(verbose_name="Is internally validated", default=False)
+    # Default tracker for default fields (ID/KRA Pin)
+    default    = models.BooleanField(verbose_name="default_fields", default=False)
+    # authenticator
+    auth_model = models.ForeignKey(Authenticator, on_delete=CASCADE, blank=True, null=True)
 
     def __str__(self) -> str:
         return self.name
+
+class ValInstance(models.Model):
+    val = models.ForeignKey(Validator, on_delete=CASCADE)
+    usr = models.ForeignKey(Usr, on_delete=CASCADE)
+    ident = models.CharField(verbose_name="identifier", max_length=256, default="0")
+
+    def __str__(self) -> str:
+        return self.val.name + " instance for " + self.usr.def_usr.username

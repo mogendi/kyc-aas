@@ -1,9 +1,6 @@
-from .models import ( BankingChestType, ChestRegistry, Chest, Corporation, 
-                      Usr, FileInstances, HitsRegistry, WorkChestType, 
-                      Validator, HostRegistry, CorpKeyUses, NatId, KRAPinCert )
-import pathlib, os, sys, pytesseract, pdf2image, PIL, io, numpy, re, requests, json, Levenshtein as lev, datetime, face_recognition, cv2, binascii
+from .models import ( Usr, FileInstances, NatId, KRAPinCert, Validator )
+import pathlib, pytesseract, pdf2image, PIL, io, numpy, re, binascii, cv2, requests
 from django.core.files.storage import FileSystemStorage
-from PIL import ImageEnhance, ImageOps
 
 cache = {}
 
@@ -58,7 +55,6 @@ def file_contents(f):
     if ft == "document":
         pages = pdf2image.convert_from_bytes(fc)
         for pg in pages:
-            pg = pg.convert('RGB')
             dt  = numpy.array(pg)
             imgs.append(dt)
     if ft == "image":
@@ -74,9 +70,10 @@ Extract an RE pattern from image if it can
 def image_extractor(ptn, fa):
     fa.seek(0)
     fc = fa.read()
+
     hsh = hex(binascii.crc32(fc))
 
-    cached = cache.get(hsh)
+    cached = None
 
     if cached is None:
         ft = file_type(pathlib.Path(fa.name).suffix)
@@ -93,13 +90,12 @@ def image_extractor(ptn, fa):
                 txt = pytesseract.image_to_string(pg)
                 dct = dct + txt + "\n"
             idn = re.search(ptn, dct)
-            print(dct)
             cache[hsh] = dct
             if idn:
                 return idn.group()
             else:
                 return False
-        if ft == "image":
+        elif ft == "image":
             img = PIL.Image.open(io.BytesIO(fc))
             img = img.convert('RGBA')
             data = numpy.array(img)
@@ -109,12 +105,30 @@ def image_extractor(ptn, fa):
             img = PIL.Image.fromarray(data)
             txt = pytesseract.image_to_string(img)
             idn = re.search(ptn, txt)
+            print(idn)
+            cache[hsh] = txt
             print(txt)
+            if idn:
+                return idn.group()
+            else:
+                return False
+        else:
+            # assume its an image
+            img = PIL.Image.open(io.BytesIO(fc))
+            img = img.convert('RGBA')
+            data = numpy.array(img)
+            red, green, blue, alpha = data.T
+            black_to_gray = (red > 140) & (blue > 130) & (green > 128)
+            data[..., :-1][black_to_gray.T] = (255, 255, 255) 
+            img = PIL.Image.fromarray(data)
+            txt = pytesseract.image_to_string(img)
+            idn = re.search(ptn, txt)
             cache[hsh] = txt
             if idn:
                 return idn.group()
             else:
                 return False
+
     else:
         idn = re.search(ptn, cached)
         if idn:
@@ -213,3 +227,91 @@ def unpack_kra(r, fl):
         usr = usr,
         file=fl.id
     )
+
+def face_detect(frame):
+    cascPath = "kycweb/haarcascade_frontalface_default.xml"
+    faceCascade = cv2.CascadeClassifier(cascPath)
+
+    nparr = numpy.fromstring(frame.read(), numpy.uint8)
+    img_np = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    frame = img_np
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+
+    faces = faceCascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=5,
+        minSize=(30, 30)
+    )
+
+    return faces
+
+'''
+Performs a validation, given a validator
+'''
+def validate(r, vname, fname):
+    print(vname, fname)
+    f = r.FILES.get(vname)
+    print(f)
+    v = Validator.objects.get(identifier=vname)
+    if v.validator is None and v.pattern is None:
+        return True
+    elif (v.validator is None or len(v.validator) < 1) and (v.pattern is not None or len(v.pattern) > 0):
+        ret = image_extractor(v.pattern, f)
+        print(ret)
+        if ret is not False:
+            return True
+        else:
+            return False
+    elif (v.validator is not None or len(v.validator) > 0) and (v.pattern is not None or len(v.pattern) > 0):
+        ex = image_extractor(r'' + v.pattern, f)
+        if ex is not False:
+            # post to the validator
+            if v.identifier is not None:
+                ctx = {
+                    v.identifier: ex,
+                } 
+                r = requests.post(v.validator, data=ctx)
+                if r.status_code == 200:
+                    return True
+                else:
+                    return False
+            else:
+                ctx = {
+                    f.name: ex
+                } 
+                r = requests.post(v.validator, data=ctx)
+                if r.status_code == 200:
+                    return True
+                else:
+                    return False
+        else:
+            return False
+    elif v.validator is not None and v.pattern is None:
+        if not v.internal:
+            if v.identifier is not None:
+                ctx = {
+                    v.identifier: f,
+                }
+                r = requests.post(v.validator, data=ctx)
+                if r.status_code == 200:
+                    return True
+                else:
+                    return False
+            else:
+                ctx = {
+                    f.name: f,
+                }
+                r = requests.post(v.validator, data=ctx)
+                if r.status_code == 200:
+                    return True
+                else:
+                    return False
+        else:
+            if 'userid' in vname:
+                check_id
+    else:
+        return False

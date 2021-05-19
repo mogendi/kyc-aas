@@ -123,6 +123,9 @@
                                   id="key_revoke"
                                   {% if corp.enabled %}
                                   >
+                                  {% else %}
+                                  checked>
+                                  {%endif%}
                             <span class="slider round"></span>
                         </label>
                     </div>
@@ -172,6 +175,22 @@
 <script>
     $(document).ready(function() {
 
+        $(".form-group").focusin(function(){
+            $(this).addClass('is-focused');
+        });
+
+        $(".form-group").focusout(function(){
+            $(this).removeClass('is-focused');
+        });
+
+        $("input").on('input', function(){
+            if($(this).val().length > 0){
+                $(this).parent().addClass('is-filled');
+            } else {
+                $(this).parent().removeClass('is-filled');
+            }
+        });
+
         let key = '{{ corp.key }}';
 
         function disable_key(){
@@ -180,7 +199,7 @@
                 if(!data.toggled){
                     console.log(err);
                 } else {
-                    console.log('toggled');
+                    console.log(data);
                 }
             });
         }

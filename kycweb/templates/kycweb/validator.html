@@ -1,0 +1,154 @@
+<style>
+    .fl-err{
+        border: 3px solid red;
+    }
+    .fl-suc{
+        border: 3px solid green;
+    }
+</style>
+
+{% csrf_token %}
+<div class="col-md-6">
+    <div class="card">
+        <div class="card-header card-header-primary">
+            <h4 class="card-title">Get authenticated for {{app.name}} applications</h4>
+        </div>
+
+        <div class="card-body" id="form">
+            {% for validator in fields%}
+            <div class="row">
+                <div class="col-md" id="{{ validator.name }}">
+                    <label id="{{ validator.identifier }}" class="label_" style="color: black; cursor: pointer;">
+                        Add your {{ validator.name }} document
+                        <span class="material-icons">add</span>
+                    </label>
+                    <input type="file" name="{{validator.identifier}}" id="{{validator.identifier}}" onchange="check(this)" hidden>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="row">
+                <div class="col-md">
+                    <button class="btn btn-primary pull-right" id="submit" onclick="submit_()"> get authenticated</button>
+                </div>
+            </div>
+            <p class="err text-danger"></p>
+            <progress id="progress" hidden></progress>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    $(document).ready(function(){
+        verified = false;
+        function get_extension(filename) {
+            var parts = filename.split('.');
+            return parts[parts.length - 1];
+        }
+
+        function is_image(filename) {
+            var ext = get_extension(filename);
+            switch (ext.toLowerCase()) {
+                case 'jpg':
+                    return 'image/jpeg';
+                case 'gif':
+                    return 'image/gif';
+                case 'bmp':
+                    return 'image/bmp';
+                case 'png':
+                    return 'image/png';
+                case 'pdf':
+                    return 'application/pdf'
+            }
+            return false;
+        }
+
+        function check(el){
+            $(el).parent().removeClass("fl-err");
+            $(".err").html();
+            $("#progress").removeAttr('hidden');
+
+            window.verified = verified;
+            let doc = el.files[0];
+            var typ = is_image(doc.name);
+
+            if (!typ){
+                $(el).parent().addClass("fl-err");
+                $(".err").html("only pdfs and images allowed");
+                document.getElementById("progress").setAttribute('hidden', true);
+                return;
+            }
+            
+            let formdata = new FormData();
+            formdata.append('csrfmiddlewaretoken', '{{csrf_token}}');
+            formdata.append(el.id, doc);
+            formdata.append('vname', el.id);
+            formdata.append('fname', doc.name);
+
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', 'validator/verify/', true);
+            xhr.addEventListener('load', function (event) {
+                document.getElementById("progress").setAttribute('hidden', true);
+                let objects = JSON.parse(event.target.response);
+                console.log(objects);
+                if (objects.validated){
+                    $(el).parent().addClass("fl-suc");
+                    $(".err").html();
+                    window.verified = true;
+                    console.log(window.verified)
+                    return;
+                } else {
+                    $(el).parent().removeClass("fl-suc");
+                    $(el).parent().addClass("fl-err");
+                    window.verified = false
+                    $(".err").html("Please ensure the document is legitimate, and that all details are visible");
+                }
+            });
+            xhr.send(formdata);
+        }
+
+        window.check = check;
+        window.get_extension = get_extension;
+        window.is_image = is_image;
+    });
+
+    $(".label_").click(function(){
+        $(this).parent().children("input").click();
+    });
+
+    function submit_(){
+        console.log(verified);
+        if(verified){
+            var inps = document.getElementById("form").querySelectorAll("input");
+            document.getElementById("progress").removeAttribute('hidden');
+
+            console.log(inps);
+    
+            let formdata = new FormData();
+            formdata.append('csrfmiddlewaretoken', '{{csrf_token}}');   
+
+            for(let i = 0; i<inps.length; i++){
+                console.log(i);
+                var doc = inps[i].files[0];
+                console.log(doc);
+                formdata.append(inps[i].id, doc);    
+            }
+
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', 'validator/new/instance/', true);
+            xhr.addEventListener('load', function(event){
+                document.getElementById("progress").setAttribute('hidden', true);
+                let objects = JSON.parse(event.target.response);
+
+                if(objects.created){
+                    $("#chests").click();
+                }
+            });
+            xhr.send(formdata);
+        } else {
+            return;
+        }
+    }
+
+    window.submit_ = submit_;
+</script>

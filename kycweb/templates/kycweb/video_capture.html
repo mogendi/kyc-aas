@@ -1,0 +1,115 @@
+<html>
+
+<style>
+	#overlay{
+		padding: 5%;
+	}
+</style>
+
+{% csrf_token %}
+
+<div class="modal" id="exampleModal_v" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Passport Photo</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">	
+		<video autoplay id="video_out"></video>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+		integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+ 	    crossorigin="anonymous"></script>
+
+<script>
+    const constraints = {
+		video: true
+	};
+
+	function handleSuccess(stream) {
+		document.querySelector('video').srcObject = stream;
+        console.log(stream);
+	}
+
+	function handleError(error) {
+		console.log('getUserMedia error: ', error);
+	}
+
+	navigator.mediaDevices.getUserMedia(constraints)
+			.then(handleSuccess)
+			.catch(handleError);
+
+	const source_video = document.getElementById("video_out");
+	const upload_width = 640;
+	const mirror = false;
+
+	var v = source_video;
+
+	let is_playing = false;
+	let got_metadata = false;
+
+	let image_canvas = document.createElement('canvas');
+	let image_ctx = image_canvas.getContext("2d");
+
+	function post_file(file){
+		let formdata = new FormData();
+    	formdata.append("frame", file);
+		formdata.append('csrfmiddlewaretoken', '{{csrf_token}}');
+		let xhr = new XMLHttpRequest();
+
+    	xhr.open('POST', '/capture/stream/id/', true);
+    	xhr.onload = function () {
+			if (this.status === 200) {
+				let objects = JSON.parse(this.response);
+				console.log(objects);
+	
+				//Send the next image
+				if(!objects.verified){
+					image_canvas.toBlob(post_file, 'image/jpeg');
+				}
+			}
+			else{
+				console.error(xhr);
+			}
+    	};
+    	xhr.send(formdata);
+
+	}
+
+	window.post_file = post_file;
+
+	function start_stream(){
+		image_canvas.width = v.videoWidth;
+    	image_canvas.height = v.videoHeight
+		image_ctx.drawImage(v, 0, 0, v.videoWidth, v.videoHeight, 0, 0, v.videoWidth, v.videoHeight);
+    	image_canvas.toBlob(post_file, 'image/jpeg');
+	}
+
+	window.start_stream = start_stream;
+
+	v.onloadedmetadata = () => {
+    console.log("video metadata ready");
+    got_metadata = true;
+    if (is_playing)
+        start_stream();
+	};
+
+	v.onplaying = () => {
+    console.log("video playing");
+    is_playing = true;
+    if (got_metadata)
+        start_stream();
+    };
+	
+	
+</script>
+
+</html>

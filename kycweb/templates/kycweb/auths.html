@@ -1,0 +1,40 @@
+<div class="row">
+    {% if len_ > 0 %}
+        {% for a in auths %}
+        <div class="col-md-3">     
+            <a href="#" onclick="auth_(this)" id="{{ a.name }}">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="card-icon">
+                            <p class="text-info">For {{ a.name }}</p>
+                            <i class="material-icons">
+                                add_circle_outline
+                            </i>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <div class="card-icon">
+                        <p class="text-info">No Authenticators currently</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    function auth_(el){
+        $.get('validator/auth/?authenticator=' + el.id, function(data){
+            $(".content").html(data);
+        });
+    }
+
+    window.auth_ = auth_;
+</script>
